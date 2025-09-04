@@ -1,0 +1,13 @@
+name = "SimplexContinuation"
+uuid = "ba86c9c1-e229-463e-839d-65f938a3ec1b"
+authors = ["David A W Barton"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
