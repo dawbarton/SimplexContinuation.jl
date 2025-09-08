@@ -134,12 +134,14 @@ using Test
             space_dimension(s)
             eltype(s)
 
-            # Verify original is unchanged
-            @test s.vertices == original_vertices
+            # Verify original is unchanged (compare with original input)
+            @test s.vertices[:, 1] == original_vertices[1]
+            @test s.vertices[:, 2] == original_vertices[2]
+            @test s.vertices[:, 3] == original_vertices[3]
 
             # Test Freudenthal functions don't mutate
             freudenthal_s = freudenthal_initial_simplex(2)
-            original_freudenthal = [copy(v) for v in freudenthal_s.vertices]
+            original_freudenthal = copy(freudenthal_s.vertices)
 
             is_freudenthal(freudenthal_s)
             freudenthal_reflect(freudenthal_s, 1)
@@ -166,14 +168,14 @@ using Test
             sort!(s2)
 
             # s1 should be unchanged
-            @test s1.vertices[1] == [1, 2]
-            @test s1.vertices[2] == [3, 4]
-            @test s1.vertices[3] == [5, 6]
+            @test s1.vertices[:, 1] == [1, 2]
+            @test s1.vertices[:, 2] == [3, 4]
+            @test s1.vertices[:, 3] == [5, 6]
 
             # s2 should be sorted
-            @test s2.vertices[1] == [1, 2]
-            @test s2.vertices[2] == [3, 4]
-            @test s2.vertices[3] == [5, 6]
+            @test s2.vertices[:, 1] == [1, 2]
+            @test s2.vertices[:, 2] == [3, 4]
+            @test s2.vertices[:, 3] == [5, 6]
         end
     end
 
@@ -183,9 +185,9 @@ using Test
             s1d = freudenthal_initial_simplex(1)
             @test simplex_dimension(s1d) == 1
             @test space_dimension(s1d) == 1
-            @test length(s1d.vertices) == 2
-            @test s1d.vertices[1] == [0]
-            @test s1d.vertices[2] == [1]
+            @test size(s1d.vertices, 2) == 2
+            @test s1d.vertices[:, 1] == [0]
+            @test s1d.vertices[:, 2] == [1]
 
             # Test 1D reflections
             reflected_1d_1 = freudenthal_reflect(s1d, 1)
@@ -383,8 +385,8 @@ using Test
             @test eltype(reflected_rational) == Rational{Int}
 
             # Test that results are exact
-            @test reflected_rational.vertices[2] == vertices_rational[2]
-            @test reflected_rational.vertices[3] == vertices_rational[3]
+            @test reflected_rational.vertices[:, 2] == vertices_rational[2]
+            @test reflected_rational.vertices[:, 3] == vertices_rational[3]
         end
 
         @testset "Mixed Precision Operations" begin

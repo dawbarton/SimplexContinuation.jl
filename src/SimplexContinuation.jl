@@ -1,6 +1,6 @@
 module SimplexContinuation
 
-using FixedSizeArrays: FixedSizeArray, FixedSizeVector, FixedSizeVectorDefault
+using FixedSizeArrays: FixedSizeArray, FixedSizeMatrixDefault, FixedSizeVector, FixedSizeVectorDefault
 using LinearAlgebra: qr, qr!, nullspace, dot
 
 const FSVector{T} = FixedSizeVectorDefault{T}
@@ -18,7 +18,7 @@ may not be the same as `n`. Both `n` and `dims` are inferred from the size of
 struct Simplex{T}
     n::Int
     dims::Int
-    vertices::FSVector{FSVector{T}}
+    vertices::FixedSizeMatrixDefault{T}
 
     function Simplex(vertices)
         T = Union{}
@@ -30,35 +30,30 @@ struct Simplex{T}
     function Simplex{T}(vertices) where {T}
         n = length(vertices) - 1
         dims = length(first(vertices))
-        new_vertices = FSVector{FSVector{T}}(undef, n + 1)
+        new_vertices = FixedSizeMatrixDefault{T}(undef, dims, n + 1)
         for (i, vertex) in enumerate(vertices)
             if length(vertex) != dims
                 throw(ArgumentError("All vertices must have the same dimension"))
             else
-                new_vertices[i] = FSVector{T}(vertex)
+                new_vertices[:, i] .= vertex
             end
         end
         return new{T}(n, dims, new_vertices)
     end
     function Simplex{T}(::UndefInitializer, n::Integer, dims::Integer = n) where {T}
-        new_vertices = FSVector{FSVector{T}}(undef, n + 1)
-        for i in eachindex(new_vertices)
-            new_vertices[i] = FSVector{T}(undef, dims)
-        end
+        new_vertices = FixedSizeMatrixDefault{T}(undef, dims, n + 1)
         return new{T}(n, dims, new_vertices)
     end
 end
 
 function Simplex{NT}(simplex::Simplex{T}) where {NT, T}
     new_simplex = Simplex{NT}(undef, simplex.n, simplex.dims)
-    for i in eachindex(simplex.vertices)
-        new_simplex.vertices[i] .= simplex.vertices[i]
-    end
+    copyto!(new_simplex.vertices, simplex.vertices)
     return new_simplex
 end
 (Simplex(simplex::Simplex{T}) where {T}) = Simplex{T}(simplex)
 
-Base.sort!(simplex::Simplex) = (sort!(simplex.vertices); return simplex)
+Base.sort!(simplex::Simplex) = (copyto!(simplex.vertices, sortslices(simplex.vertices, dims = 2)); return simplex)
 (Base.eltype(simplex::Simplex{T}) where {T}) = T
 
 """
@@ -90,18 +85,18 @@ function reflect(simplex::Simplex{T}, facet_index) where {T}
 
     # Take the first vertex not equal to the facet index to be the origin and find the edge vectors
     origin_index = facet_index == 1 ? 2 : 1
-    origin_vertex = simplex.vertices[origin_index]
-    edge_vectors = FixedSizeArray{T}(undef, (simplex.dims, simplex.n - 1))
+    origin_vertex = simplex.vertices[:, origin_index]
+    edge_vectors = FixedSizeMatrixDefault{T}(undef, simplex.dims, simplex.n - 1)
     j = 1
-    for i in (origin_index + 1):length(simplex.vertices)
-        if i != facet_index
-            edge_vectors[:, j] .= simplex.vertices[i] .- origin_vertex
+    for i in 1:(simplex.n + 1)
+        if i != facet_index && i != origin_index
+            edge_vectors[:, j] .= simplex.vertices[:, i] .- origin_vertex
             j += 1
         end
     end
 
     # The vertex to be reflected
-    vertex_to_reflect = simplex.vertices[facet_index]
+    vertex_to_reflect = simplex.vertices[:, facet_index]
 
     # Find normal to the hyperplane using QR decomposition
     # The normal is orthogonal to all edge vectors
@@ -126,9 +121,9 @@ function reflect(simplex::Simplex{T}, facet_index) where {T}
     # Create new simplex with reflected vertex
     new_simplex = Simplex(simplex)
     if T <: Integer
-        new_simplex.vertices[facet_index] .= round.(T, reflected_vertex)
+        new_simplex.vertices[:, facet_index] .= round.(T, reflected_vertex)
     else
-        new_simplex.vertices[facet_index] .= reflected_vertex
+        new_simplex.vertices[:, facet_index] .= reflected_vertex
     end
 
     return new_simplex
@@ -147,8 +142,8 @@ function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
     end
 
     # Translate simplex so that the first vertex is at origin
-    origin = simplex.vertices[1]
-    translated_vertices = [vertex - origin for vertex in simplex.vertices]
+    origin = simplex.vertices[:, 1]
+    translated_vertices = simplex.vertices[:, 2:end] .- origin
 
     # Check if the translated simplex has the staircase pattern
     # when coordinates are sorted appropriately
@@ -156,9 +151,9 @@ function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
 
     # The translated vertices should form a pattern where each vertex
     # has exactly one more coordinate equal to 1 than the previous
-    for i in 1:(n + 1)
-        vertex = translated_vertices[i]
-        expected_ones = i - 1
+    for i in 1:n
+        vertex = translated_vertices[:, i]
+        expected_ones = i
 
         # Count how many coordinates are 1 and how many are 0
         ones_count = 0
@@ -181,8 +176,8 @@ function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
 
     # Additional check: verify the vertices form a valid simplex structure
     # The difference between consecutive vertices should be a unit vector
-    for i in 2:(n + 1)
-        diff = translated_vertices[i] - translated_vertices[i - 1]
+    for i in 2:n
+        diff = translated_vertices[:, i] - translated_vertices[:, i - 1]
         unit_vector_count = 0
         for coord in diff
             if coord == 1
@@ -215,15 +210,14 @@ function freudenthal_initial_simplex(T, n)
         throw(ArgumentError("Type T must be a subtype of Integer"))
     end
     simplex = Simplex{T}(undef, n, n)
-    for (j, vertex) in enumerate(simplex.vertices)
-        for i in eachindex(vertex)
-            vertex[i] = (i < j) ? one(T) : zero(T)
+    for j in 1:(n + 1)
+        for i in 1:n
+            simplex.vertices[i, j] = (i < j) ? one(T) : zero(T)
         end
     end
     return simplex
 end
 freudenthal_initial_simplex(n) = freudenthal_initial_simplex(Int, n)
-
 """
     freudenthal_reflect(simplex::Simplex{<:Integer}, facet_index)
 
@@ -245,8 +239,8 @@ function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integ
     # Find which coordinate is incremented at each step
     increment_order = zeros(Int, simplex.n)
     for i in 2:(simplex.n + 1)
-        for j in eachindex(simplex.vertices[i])
-            diff = simplex.vertices[i][j] - simplex.vertices[i - 1][j]
+        for j in 1:simplex.dims
+            diff = simplex.vertices[j, i] - simplex.vertices[j, i - 1]
             if diff == 1
                 increment_order[i - 1] = j
                 break
@@ -277,10 +271,10 @@ function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integ
 
     # Construct new simplex from the new increment order
     new_simplex = Simplex(simplex)
-    current_vertex = copy(simplex.vertices[1])
+    current_vertex = simplex.vertices[:, 1]  # slicing creates a copy
     for (i, inc) in enumerate(increment_order)
         current_vertex[inc] += 1
-        new_simplex.vertices[i + 1] .= current_vertex
+        new_simplex.vertices[:, i + 1] .= current_vertex
     end
 
     return new_simplex

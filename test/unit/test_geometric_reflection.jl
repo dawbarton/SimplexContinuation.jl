@@ -22,10 +22,10 @@ using Test
         reflected_1 = reflect(s, 1)
         # When reflecting vertex 1 across the opposite facet,
         # vertices 2 and 3 should remain unchanged (they form the facet)
-        @test reflected_1.vertices[2] == s.vertices[2]
-        @test reflected_1.vertices[3] == s.vertices[3]
+        @test reflected_1.vertices[:, 2] == s.vertices[:, 2]
+        @test reflected_1.vertices[:, 3] == s.vertices[:, 3]
         # The reflected vertex should be different
-        @test reflected_1.vertices[1] != s.vertices[1]
+        @test reflected_1.vertices[:, 1] != s.vertices[:, 1]
     end
 
     @testset "3D Geometric Reflections" begin
@@ -74,9 +74,9 @@ using Test
 
         # When reflecting across facet opposite to vertex 1,
         # vertices 2, 3, 4 should remain unchanged
-        @test reflected_3d.vertices[2] == s_3d.vertices[2]
-        @test reflected_3d.vertices[3] == s_3d.vertices[3]
-        @test reflected_3d.vertices[4] == s_3d.vertices[4]
+        @test reflected_3d.vertices[:, 2] == s_3d.vertices[:, 2]
+        @test reflected_3d.vertices[:, 3] == s_3d.vertices[:, 3]
+        @test reflected_3d.vertices[:, 4] == s_3d.vertices[:, 4]
     end
 
     @testset "Reflection Error Handling" begin
@@ -115,7 +115,7 @@ using Test
         @test eltype(reflected_big) == BigFloat
 
         # Test that type is preserved
-        @test typeof(reflected_big.vertices[1][1]) == BigFloat
+        @test typeof(reflected_big.vertices[1, 1]) == BigFloat
     end
 
     @testset "Geometric Correctness" begin
@@ -129,12 +129,12 @@ using Test
         # The reflected vertex should be equidistant from the line containing the facet
         # Original vertex [1.0, 2.0] reflected across line from [0,0] to [2,0] (y=0)
         # Should give [1.0, -2.0]
-        @test abs(reflected.vertices[3][1] - 1.0) < 1.0e-10
-        @test abs(reflected.vertices[3][2] - (-2.0)) < 1.0e-10
+        @test abs(reflected.vertices[1, 3] - 1.0) < 1.0e-10
+        @test abs(reflected.vertices[2, 3] - (-2.0)) < 1.0e-10
 
         # The other vertices should be unchanged
-        @test reflected.vertices[1] ≈ vertices[1]
-        @test reflected.vertices[2] ≈ vertices[2]
+        @test reflected.vertices[:, 1] ≈ vertices[1]
+        @test reflected.vertices[:, 2] ≈ vertices[2]
     end
 
     @testset "Edge Cases and Boundary Conditions" begin
@@ -144,13 +144,13 @@ using Test
 
         # Reflect across "facet" 1 (point [1.0])
         reflected_1d_1 = reflect(s_1d, 1)
-        @test reflected_1d_1.vertices[2] == [1.0]  # Facet point unchanged
-        @test reflected_1d_1.vertices[1] == [2.0]  # Reflected point
+        @test reflected_1d_1.vertices[:, 2] == [1.0]  # Facet point unchanged
+        @test reflected_1d_1.vertices[:, 1] == [2.0]  # Reflected point
 
         # Reflect across "facet" 2 (point [0.0])
         reflected_1d_2 = reflect(s_1d, 2)
-        @test reflected_1d_2.vertices[1] == [0.0]  # Facet point unchanged
-        @test reflected_1d_2.vertices[2] == [-1.0] # Reflected point
+        @test reflected_1d_2.vertices[:, 1] == [0.0]  # Facet point unchanged
+        @test reflected_1d_2.vertices[:, 2] == [-1.0] # Reflected point
 
         # Test with very small simplex
         tiny_vertices = [[0.0, 0.0], [1.0e-10, 0.0], [0.0, 1.0e-10]]

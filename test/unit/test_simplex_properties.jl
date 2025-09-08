@@ -45,33 +45,33 @@ using Test
         @test result === s  # Should return the same object
 
         # Check that vertices are sorted
-        @test s.vertices[1] == [0, 0]
-        @test s.vertices[2] == [1, 2]
-        @test s.vertices[3] == [2, 1]
+        @test s.vertices[:, 1] == [0, 0]
+        @test s.vertices[:, 2] == [1, 2]
+        @test s.vertices[:, 3] == [2, 1]
 
         # Test with different data types
         vertices_float = [[2.5, 1.0], [0.0, 0.0], [1.0, 2.5]]
         s_float = SimplexContinuation.Simplex(vertices_float)
         sort!(s_float)
-        @test s_float.vertices[1] == [0.0, 0.0]
-        @test s_float.vertices[2] == [1.0, 2.5]
-        @test s_float.vertices[3] == [2.5, 1.0]
+        @test s_float.vertices[:, 1] == [0.0, 0.0]
+        @test s_float.vertices[:, 2] == [1.0, 2.5]
+        @test s_float.vertices[:, 3] == [2.5, 1.0]
 
         # Test sorting with negative numbers
         vertices_neg = [[-1, -2], [-3, 0], [1, 1]]
         s_neg = SimplexContinuation.Simplex(vertices_neg)
         sort!(s_neg)
-        @test s_neg.vertices[1] == [-3, 0]
-        @test s_neg.vertices[2] == [-1, -2]
-        @test s_neg.vertices[3] == [1, 1]
+        @test s_neg.vertices[:, 1] == [-3, 0]
+        @test s_neg.vertices[:, 2] == [-1, -2]
+        @test s_neg.vertices[:, 3] == [1, 1]
 
         # Test sorting with duplicate vertices
         vertices_dup = [[1, 1], [0, 0], [1, 1]]
         s_dup = SimplexContinuation.Simplex(vertices_dup)
         sort!(s_dup)
-        @test s_dup.vertices[1] == [0, 0]
-        @test s_dup.vertices[2] == [1, 1]
-        @test s_dup.vertices[3] == [1, 1]
+        @test s_dup.vertices[:, 1] == [0, 0]
+        @test s_dup.vertices[:, 2] == [1, 1]
+        @test s_dup.vertices[:, 3] == [1, 1]
     end
 
     @testset "Type Consistency" begin
@@ -105,7 +105,10 @@ using Test
         eltype(s)
 
         # Verify original is unchanged (except sort! which is explicitly mutating)
-        @test s.vertices == original_vertices
+        # Compare each vertex column with original vectors
+        @test s.vertices[:, 1] == original_vertices[1]
+        @test s.vertices[:, 2] == original_vertices[2]
+        @test s.vertices[:, 3] == original_vertices[3]
 
         # Test that sort! does mutate
         s_for_sort = SimplexContinuation.Simplex([[2, 1], [0, 0], [1, 2]])

@@ -8,42 +8,42 @@ using Test
             s1d = freudenthal_initial_simplex(1)
             @test s1d.n == 1
             @test s1d.dims == 1
-            @test length(s1d.vertices) == 2
-            @test s1d.vertices[1] == [0]
-            @test s1d.vertices[2] == [1]
+            @test size(s1d.vertices, 2) == 2
+            @test s1d.vertices[:, 1] == [0]
+            @test s1d.vertices[:, 2] == [1]
             @test is_freudenthal(s1d)
 
             # Test 2D case
             s2d = freudenthal_initial_simplex(2)
             @test s2d.n == 2
             @test s2d.dims == 2
-            @test length(s2d.vertices) == 3
-            @test s2d.vertices[1] == [0, 0]
-            @test s2d.vertices[2] == [1, 0]
-            @test s2d.vertices[3] == [1, 1]
+            @test size(s2d.vertices, 2) == 3
+            @test s2d.vertices[:, 1] == [0, 0]
+            @test s2d.vertices[:, 2] == [1, 0]
+            @test s2d.vertices[:, 3] == [1, 1]
             @test is_freudenthal(s2d)
 
             # Test 3D case
             s3d = freudenthal_initial_simplex(3)
             @test s3d.n == 3
             @test s3d.dims == 3
-            @test length(s3d.vertices) == 4
-            @test s3d.vertices[1] == [0, 0, 0]
-            @test s3d.vertices[2] == [1, 0, 0]
-            @test s3d.vertices[3] == [1, 1, 0]
-            @test s3d.vertices[4] == [1, 1, 1]
+            @test size(s3d.vertices, 2) == 4
+            @test s3d.vertices[:, 1] == [0, 0, 0]
+            @test s3d.vertices[:, 2] == [1, 0, 0]
+            @test s3d.vertices[:, 3] == [1, 1, 0]
+            @test s3d.vertices[:, 4] == [1, 1, 1]
             @test is_freudenthal(s3d)
 
             # Test 4D case
             s4d = freudenthal_initial_simplex(4)
             @test s4d.n == 4
             @test s4d.dims == 4
-            @test length(s4d.vertices) == 5
-            @test s4d.vertices[1] == [0, 0, 0, 0]
-            @test s4d.vertices[2] == [1, 0, 0, 0]
-            @test s4d.vertices[3] == [1, 1, 0, 0]
-            @test s4d.vertices[4] == [1, 1, 1, 0]
-            @test s4d.vertices[5] == [1, 1, 1, 1]
+            @test size(s4d.vertices, 2) == 5
+            @test s4d.vertices[:, 1] == [0, 0, 0, 0]
+            @test s4d.vertices[:, 2] == [1, 0, 0, 0]
+            @test s4d.vertices[:, 3] == [1, 1, 0, 0]
+            @test s4d.vertices[:, 4] == [1, 1, 1, 0]
+            @test s4d.vertices[:, 5] == [1, 1, 1, 1]
             @test is_freudenthal(s4d)
         end
 
@@ -63,7 +63,7 @@ using Test
 
             # Test that all coordinates are correct type
             s_typed = freudenthal_initial_simplex(Int16, 2)
-            @test all(v -> all(x -> typeof(x) == Int16, v), s_typed.vertices)
+            @test all(x -> typeof(x) == Int16, s_typed.vertices)
         end
 
         @testset "Edge Cases" begin
@@ -81,11 +81,12 @@ using Test
                 s = freudenthal_initial_simplex(n)
                 @test s.n == n
                 @test s.dims == n
-                @test length(s.vertices) == n + 1
+                @test size(s.vertices, 2) == n + 1
                 @test is_freudenthal(s)
 
                 # Verify staircase pattern
-                for (i, vertex) in enumerate(s.vertices)
+                for i in 1:(n + 1)
+                    vertex = s.vertices[:, i]
                     ones_count = sum(vertex)
                     @test ones_count == i - 1
                 end
@@ -104,7 +105,7 @@ using Test
             # Test translated Freudenthal simplex
             s2d = freudenthal_initial_simplex(2)
             offset = [3, 5]
-            translated_vertices = [v .+ offset for v in s2d.vertices]
+            translated_vertices = [s2d.vertices[:, i] .+ offset for i in 1:size(s2d.vertices, 2)]
             translated_simplex = SimplexContinuation.Simplex(translated_vertices)
             @test is_freudenthal(translated_simplex)
 
@@ -197,7 +198,7 @@ using Test
             ]
 
             for translation in translations
-                translated_vertices = [v .+ translation for v in base_simplex.vertices]
+                translated_vertices = [base_simplex.vertices[:, i] .+ translation for i in 1:size(base_simplex.vertices, 2)]
                 translated_simplex = SimplexContinuation.Simplex(translated_vertices)
                 @test is_freudenthal(translated_simplex)
             end
@@ -299,7 +300,7 @@ using Test
 
             # Test reflection of translated simplex
             offset = [2, 3, 1]
-            translated_vertices = [v .+ offset for v in s3d.vertices]
+            translated_vertices = [s3d.vertices[:, i] .+ offset for i in 1:size(s3d.vertices, 2)]
             translated_simplex = SimplexContinuation.Simplex(translated_vertices)
             @test is_freudenthal(translated_simplex)
 
@@ -308,7 +309,7 @@ using Test
 
             # Test that translation commutes with reflection
             reflected_then_translated = freudenthal_reflect(s3d, 1)
-            reflected_then_translated_vertices = [v .+ offset for v in reflected_then_translated.vertices]
+            reflected_then_translated_vertices = [reflected_then_translated.vertices[:, i] .+ offset for i in 1:size(reflected_then_translated.vertices, 2)]
             reflected_then_translated_simplex = SimplexContinuation.Simplex(reflected_then_translated_vertices)
             @test reflected_translated.vertices == reflected_then_translated_simplex.vertices
         end
@@ -383,9 +384,9 @@ using Test
 
             # These should share a facet (2 vertices in 2D)
             shared_vertices = 0
-            for v1 in s2d.vertices
-                for v2 in reflected.vertices
-                    if v1 == v2
+            for i in 1:size(s2d.vertices, 2)
+                for j in 1:size(reflected.vertices, 2)
+                    if s2d.vertices[:, i] == reflected.vertices[:, j]
                         shared_vertices += 1
                     end
                 end
@@ -399,9 +400,9 @@ using Test
 
                 # The reflected simplex should share exactly 3 vertices with original (a face)
                 shared_count = 0
-                for v1 in s3d.vertices
-                    for v2 in reflected.vertices
-                        if v1 == v2
+                for i in 1:size(s3d.vertices, 2)
+                    for j in 1:size(reflected.vertices, 2)
+                        if s3d.vertices[:, i] == reflected.vertices[:, j]
                             shared_count += 1
                         end
                     end
