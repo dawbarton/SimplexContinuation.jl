@@ -239,54 +239,47 @@ function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integ
         throw(ArgumentError("Reflection only implemented for full-dimensional simplices"))
     end
 
-    new_simplex = Simplex(simplex)
-
     # For Freudenthal triangulation, reflection across a facet corresponds to
     # swapping the order of coordinate increments in the staircase pattern
 
-    # Translate simplex to have first vertex at origin
-    origin = simplex.vertices[1]
-    translated_vertices = [vertex - origin for vertex in simplex.vertices]
-
     # Find which coordinate is incremented at each step
-    increment_order = Int[]
+    increment_order = zeros(Int, simplex.n)
     for i in 2:(simplex.n + 1)
-        diff = translated_vertices[i] - translated_vertices[i - 1]
-        coord_index = findfirst(x -> x == 1, diff)
-        if coord_index === nothing
+        for j in eachindex(simplex.vertices[i])
+            diff = simplex.vertices[i][j] - simplex.vertices[i - 1][j]
+            if diff == 1
+                increment_order[i - 1] = j
+                break
+            end
+        end
+        if increment_order[i - 1] == 0
             throw(ArgumentError("Invalid Freudenthal simplex structure"))
         end
-        push!(increment_order, coord_index)
     end
 
     # Create new increment order by swapping the position corresponding to facet_index
-    new_increment_order = copy(increment_order)
-
     if facet_index == 1
         # Reflecting first vertex: swap first two increments
-        if length(new_increment_order) >= 2
-            new_increment_order[1], new_increment_order[2] = new_increment_order[2], new_increment_order[1]
+        if simplex.n >= 2
+            increment_order[1], increment_order[2] = increment_order[2], increment_order[1]
         end
     elseif facet_index == simplex.n + 1
         # Reflecting last vertex: swap last two increments
-        if length(new_increment_order) >= 2
-            n = length(new_increment_order)
-            new_increment_order[n - 1], new_increment_order[n] = new_increment_order[n], new_increment_order[n - 1]
+        if simplex.n >= 2
+            n = simplex.n
+            increment_order[n - 1], increment_order[n] = increment_order[n], increment_order[n - 1]
         end
     else
         # Reflecting middle vertex: swap the increment that creates this vertex with the next one
         idx = facet_index - 1  # Convert from vertex index to increment index
-        if idx >= 1 && idx < length(new_increment_order)
-            new_increment_order[idx], new_increment_order[idx + 1] = new_increment_order[idx + 1], new_increment_order[idx]
-        end
+        increment_order[idx], increment_order[idx + 1] = increment_order[idx + 1], increment_order[idx]
     end
 
     # Construct new simplex from the new increment order
-    new_simplex.vertices[1] .= simplex.vertices[1]  # Keep same origin
+    new_simplex = Simplex(simplex)
     current_vertex = copy(simplex.vertices[1])
-
-    for i in 1:length(new_increment_order)
-        current_vertex[new_increment_order[i]] += 1
+    for (i, inc) in enumerate(increment_order)
+        current_vertex[inc] += 1
         new_simplex.vertices[i + 1] .= current_vertex
     end
 
