@@ -6,7 +6,7 @@ using LinearAlgebra: qr, qr!, nullspace, dot
 const FSVector{T} = FixedSizeVectorDefault{T}
 
 export Simplex
-export simplex_dimension, space_dimension, reflect, freudenthal_initial_simplex, freudenthal_reflect
+export simplex_dimension, space_dimension, reflect, is_freudenthal, freudenthal_initial_simplex, freudenthal_reflect
 
 """
     Simplex{T}(vertices)
@@ -14,10 +14,6 @@ export simplex_dimension, space_dimension, reflect, freudenthal_initial_simplex,
 A representation of an `n`-simplex that lives in dimension `dims` which may or
 may not be the same as `n`. Both `n` and `dims` are inferred from the size of
 `vertices` and each corresponding vertex. If not specifed, `T` will be inferred.
-
-Vertices are stored in lexicographical order by default. However, since the
-vectors stored are mutable, the lexicographical order may be violated. To
-restore the order, call `sort!` on the simplex.
 """
 struct Simplex{T}
     n::Int
@@ -42,7 +38,7 @@ struct Simplex{T}
                 new_vertices[i] = FSVector{T}(vertex)
             end
         end
-        return new{T}(n, dims, sort!(new_vertices))
+        return new{T}(n, dims, new_vertices)
     end
     function Simplex{T}(::UndefInitializer, n::Integer, dims::Integer = n) where {T}
         new_vertices = FSVector{FSVector{T}}(undef, n + 1)
@@ -135,8 +131,74 @@ function reflect(simplex::Simplex{T}, facet_index) where {T}
         new_simplex.vertices[facet_index] .= reflected_vertex
     end
 
-    return sort!(new_simplex)
+    return new_simplex
 end
+
+"""
+    is_freudenthal(simplex::Simplex{<: Integer})
+
+Check if a simplex follows the structure of a Freudenthal triangulation.
+A simplex is Freudenthal if it can be obtained by permuting the coordinates
+of the initial Freudenthal simplex and then translating by an integer vector.
+"""
+function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
+    if simplex.n != simplex.dims
+        return false
+    end
+
+    # Translate simplex so that the first vertex is at origin
+    origin = simplex.vertices[1]
+    translated_vertices = [vertex - origin for vertex in simplex.vertices]
+
+    # Check if the translated simplex has the staircase pattern
+    # when coordinates are sorted appropriately
+    n = simplex.n
+
+    # The translated vertices should form a pattern where each vertex
+    # has exactly one more coordinate equal to 1 than the previous
+    for i in 1:(n + 1)
+        vertex = translated_vertices[i]
+        expected_ones = i - 1
+
+        # Count how many coordinates are 1 and how many are 0
+        ones_count = 0
+        zeros_count = 0
+
+        for coord in vertex
+            if coord == 1
+                ones_count += 1
+            elseif coord == 0
+                zeros_count += 1
+            else
+                return false
+            end
+        end
+
+        if ones_count != expected_ones || zeros_count != (n - expected_ones)
+            return false
+        end
+    end
+
+    # Additional check: verify the vertices form a valid simplex structure
+    # The difference between consecutive vertices should be a unit vector
+    for i in 2:(n + 1)
+        diff = translated_vertices[i] - translated_vertices[i - 1]
+        unit_vector_count = 0
+        for coord in diff
+            if coord == 1
+                unit_vector_count += 1
+            elseif coord != 0
+                return false
+            end
+        end
+        if unit_vector_count != 1
+            return false
+        end
+    end
+
+    return true
+end
+
 
 """
     freudenthal_initial_simplex([T=Int], n)
@@ -149,6 +211,9 @@ function freudenthal_initial_simplex(T, n)
     if n < 1
         throw(ArgumentError("Dimension must be at least 1"))
     end
+    if !(T <: Integer)
+        throw(ArgumentError("Type T must be a subtype of Integer"))
+    end
     simplex = Simplex{T}(undef, n, n)
     for (j, vertex) in enumerate(simplex.vertices)
         for i in eachindex(vertex)
@@ -160,13 +225,13 @@ end
 freudenthal_initial_simplex(n) = freudenthal_initial_simplex(Int, n)
 
 """
-    freudenthal_reflect(simplex::Simplex, facet_index)
+    freudenthal_reflect(simplex::Simplex{<:Integer}, facet_index)
 
 Reflect a simplex in a Freudenthal triangulation around one of its facets. Note
 that this preserves the Freudenthal structure and so is not a general
 reflection. Returns a new simplex.
 """
-function freudenthal_reflect(simplex::Simplex, facet_index)
+function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integer}
     if (facet_index < 1) || (facet_index > simplex.n + 1)
         throw(ArgumentError("Facet index must be between 1 and $(simplex.n + 1)"))
     end
@@ -175,16 +240,57 @@ function freudenthal_reflect(simplex::Simplex, facet_index)
     end
 
     new_simplex = Simplex(simplex)
-    vertices = simplex.vertices
-    new_vertices = new_simplex.vertices
-    if facet_index == 1
-        new_vertices[facet_index] .= vertices[end] .- vertices[facet_index] .+ vertices[facet_index + 1]
-    elseif facet_index == simplex.n + 1
-        new_vertices[facet_index] .= vertices[facet_index - 1] .- vertices[facet_index] .+ vertices[1]
-    else
-        new_vertices[facet_index] .= vertices[facet_index - 1] .- vertices[facet_index] .+ vertices[facet_index + 1]
+
+    # For Freudenthal triangulation, reflection across a facet corresponds to
+    # swapping the order of coordinate increments in the staircase pattern
+
+    # Translate simplex to have first vertex at origin
+    origin = simplex.vertices[1]
+    translated_vertices = [vertex - origin for vertex in simplex.vertices]
+
+    # Find which coordinate is incremented at each step
+    increment_order = Int[]
+    for i in 2:(simplex.n + 1)
+        diff = translated_vertices[i] - translated_vertices[i - 1]
+        coord_index = findfirst(x -> x == 1, diff)
+        if coord_index === nothing
+            throw(ArgumentError("Invalid Freudenthal simplex structure"))
+        end
+        push!(increment_order, coord_index)
     end
-    return sort!(new_simplex)
+
+    # Create new increment order by swapping the position corresponding to facet_index
+    new_increment_order = copy(increment_order)
+
+    if facet_index == 1
+        # Reflecting first vertex: swap first two increments
+        if length(new_increment_order) >= 2
+            new_increment_order[1], new_increment_order[2] = new_increment_order[2], new_increment_order[1]
+        end
+    elseif facet_index == simplex.n + 1
+        # Reflecting last vertex: swap last two increments
+        if length(new_increment_order) >= 2
+            n = length(new_increment_order)
+            new_increment_order[n - 1], new_increment_order[n] = new_increment_order[n], new_increment_order[n - 1]
+        end
+    else
+        # Reflecting middle vertex: swap the increment that creates this vertex with the next one
+        idx = facet_index - 1  # Convert from vertex index to increment index
+        if idx >= 1 && idx < length(new_increment_order)
+            new_increment_order[idx], new_increment_order[idx + 1] = new_increment_order[idx + 1], new_increment_order[idx]
+        end
+    end
+
+    # Construct new simplex from the new increment order
+    new_simplex.vertices[1] .= simplex.vertices[1]  # Keep same origin
+    current_vertex = copy(simplex.vertices[1])
+
+    for i in 1:length(new_increment_order)
+        current_vertex[new_increment_order[i]] += 1
+        new_simplex.vertices[i + 1] .= current_vertex
+    end
+
+    return new_simplex
 end
 
 end  # module
