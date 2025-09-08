@@ -20,26 +20,6 @@ struct Simplex{T}
     dims::Int
     vertices::FixedSizeMatrixDefault{T}
 
-    function Simplex(vertices)
-        T = Union{}
-        for vertex in vertices
-            T = promote_type(T, eltype(vertex))
-        end
-        return Simplex{T}(vertices)
-    end
-    function Simplex{T}(vertices) where {T}
-        n = length(vertices) - 1
-        dims = length(first(vertices))
-        new_vertices = FixedSizeMatrixDefault{T}(undef, dims, n + 1)
-        for (i, vertex) in enumerate(vertices)
-            if length(vertex) != dims
-                throw(ArgumentError("All vertices must have the same dimension"))
-            else
-                new_vertices[:, i] .= vertex
-            end
-        end
-        return new{T}(n, dims, new_vertices)
-    end
     function Simplex{T}(::UndefInitializer, n::Integer, dims::Integer = n) where {T}
         new_vertices = FixedSizeMatrixDefault{T}(undef, dims, n + 1)
         return new{T}(n, dims, new_vertices)
@@ -52,6 +32,36 @@ function Simplex{NT}(simplex::Simplex{T}) where {NT, T}
     return new_simplex
 end
 (Simplex(simplex::Simplex{T}) where {T}) = Simplex{T}(simplex)
+
+function Simplex(vertices)
+    T = Union{}
+    for vertex in vertices
+        T = promote_type(T, eltype(vertex))
+    end
+    return Simplex{T}(vertices)
+end
+
+function Simplex{T}(vertices) where {T}
+    n = length(vertices) - 1
+    dims = length(first(vertices))
+    simplex = Simplex{T}(undef, n, dims)
+    for (i, vertex) in enumerate(vertices)
+        if length(vertex) != dims
+            throw(ArgumentError("All vertices must have the same dimension"))
+        else
+            simplex.vertices[:, i] .= vertex
+        end
+    end
+    return simplex
+end
+
+function Simplex(vertices::AbstractMatrix{T}) where {T}
+    dims = size(vertices, 1)
+    n = size(vertices, 2)
+    simplex = Simplex{T}(undef, n - 1, dims)
+    copyto!(simplex.vertices, vertices)
+    return simplex
+end
 
 Base.sort!(simplex::Simplex) = (copyto!(simplex.vertices, sortslices(simplex.vertices, dims = 2)); return simplex)
 (Base.eltype(simplex::Simplex{T}) where {T}) = T

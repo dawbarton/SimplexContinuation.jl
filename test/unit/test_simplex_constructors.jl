@@ -24,6 +24,15 @@ using Test
         mixed_vertices = [[0, 0], [1.0, 0], [0, 1]]
         s_mixed = SimplexContinuation.Simplex(mixed_vertices)
         @test eltype(s_mixed) == Float64
+
+        # Test construction from matrix
+        mat_vertices = [0 1 0; 0 0 1]
+        s_mat = SimplexContinuation.Simplex(mat_vertices)
+        @test s_mat.n == 2
+        @test s_mat.dims == 2
+        @test s_mat.vertices[:, 1] == [0, 0]
+        @test s_mat.vertices[:, 2] == [1, 0]
+        @test s_mat.vertices[:, 3] == [0, 1]
     end
 
     @testset "Type-Specific Construction" begin
