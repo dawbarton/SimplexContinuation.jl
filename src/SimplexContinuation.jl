@@ -228,6 +228,7 @@ function freudenthal_initial_simplex(T, n)
     return simplex
 end
 freudenthal_initial_simplex(n) = freudenthal_initial_simplex(Int, n)
+
 """
     freudenthal_reflect(simplex::Simplex{<:Integer}, facet_index)
 
@@ -236,57 +237,53 @@ that this preserves the Freudenthal structure and so is not a general
 reflection. Returns a new simplex.
 """
 function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integer}
-    if (facet_index < 1) || (facet_index > simplex.n + 1)
-        throw(ArgumentError("Facet index must be between 1 and $(simplex.n + 1)"))
+    n = simplex.n
+    dims = simplex.dims
+    if facet_index < 1 || facet_index > n + 1
+        throw(ArgumentError("Facet index must be between 1 and $(n + 1)"))
     end
-    if simplex.n != simplex.dims
-        throw(ArgumentError("Reflection only implemented for full-dimensional simplices"))
+    if n != dims
+        throw(ArgumentError("Only full-dimensional simplices supported"))
     end
 
-    # For Freudenthal triangulation, reflection across a facet corresponds to
-    # swapping the order of coordinate increments in the staircase pattern
-
-    # Find which coordinate is incremented at each step
-    increment_order = zeros(Int, simplex.n)
-    for i in 2:(simplex.n + 1)
-        for j in 1:simplex.dims
-            diff = simplex.vertices[j, i] - simplex.vertices[j, i - 1]
-            if diff == 1
+    # Recover permutation
+    increment_order = zeros(Int, n)
+    for i in 2:(n + 1)
+        for j in 1:dims
+            if simplex.vertices[j, i] - simplex.vertices[j, i - 1] == 1
                 increment_order[i - 1] = j
                 break
             end
         end
         if increment_order[i - 1] == 0
-            throw(ArgumentError("Invalid Freudenthal simplex structure"))
+            throw(ArgumentError("Invalid Freudenthal simplex"))
         end
     end
 
-    # Create new increment order by swapping the position corresponding to facet_index
+    base_vertex = simplex.vertices[:, 1]  # slicing creates a copy, so don't copy explicitly
     if facet_index == 1
-        # Reflecting first vertex: swap first two increments
-        if simplex.n >= 2
-            increment_order[1], increment_order[2] = increment_order[2], increment_order[1]
-        end
-    elseif facet_index == simplex.n + 1
-        # Reflecting last vertex: swap last two increments
-        if simplex.n >= 2
-            n = simplex.n
-            increment_order[n - 1], increment_order[n] = increment_order[n], increment_order[n - 1]
-        end
+        # Opposite v0: move to previous cube
+        coord = increment_order[1]
+        base_vertex[coord] -= 1
+        increment_order = @views vcat(increment_order[2:end], increment_order[1])
+    elseif facet_index == n + 1
+        # Opposite vn: move to next cube
+        coord = increment_order[end]
+        base_vertex[coord] += 1
+        increment_order = @views vcat(increment_order[end], increment_order[1:(end - 1)])
     else
-        # Reflecting middle vertex: swap the increment that creates this vertex with the next one
-        idx = facet_index - 1  # Convert from vertex index to increment index
-        increment_order[idx], increment_order[idx + 1] = increment_order[idx + 1], increment_order[idx]
+        # Internal facet: swap adjacent
+        i = facet_index - 1
+        increment_order[i], increment_order[i + 1] = increment_order[i + 1], increment_order[i]
     end
 
-    # Construct new simplex from the new increment order
-    new_simplex = Simplex(simplex)
-    current_vertex = simplex.vertices[:, 1]  # slicing creates a copy
+    # Rebuild simplex
+    new_simplex = Simplex{T}(undef, n, dims)
+    new_simplex.vertices[:, 1] .= base_vertex
     for (i, inc) in enumerate(increment_order)
-        current_vertex[inc] += 1
-        new_simplex.vertices[:, i + 1] .= current_vertex
+        base_vertex[inc] += 1
+        new_simplex.vertices[:, i + 1] .= base_vertex
     end
-
     return new_simplex
 end
 
