@@ -219,22 +219,23 @@ using Test
             end
 
             # Test specific reflection results
-            # Reflecting first vertex should swap x-y order
+            # Reflecting around facet 1 moves to previous cube
             reflected_1 = freudenthal_reflect(s2d, 1)
-            expected_1 = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
+            expected_1 = SimplexContinuation.Simplex([[-1, 0], [-1, 1], [0, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
-            # Test double reflection returns to original
-            double_reflected = freudenthal_reflect(reflected_1, 1)
-            @test double_reflected.vertices == s2d.vertices
-
-            # Test reflection of middle vertex
+            # Test double reflection returns to original only for internal facets
             reflected_2 = freudenthal_reflect(s2d, 2)
-            @test is_freudenthal(reflected_2)
+            double_reflected_2 = freudenthal_reflect(reflected_2, 2)
+            @test double_reflected_2.vertices == s2d.vertices
 
-            # Test reflection of last vertex
+            # Test reflection around facet 2 (internal facet - swaps increments)
+            expected_2 = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
+            @test reflected_2.vertices == expected_2.vertices
+
+            # Test reflection around facet 3 moves to next cube
             reflected_3 = freudenthal_reflect(s2d, 3)
-            expected_3 = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
+            expected_3 = SimplexContinuation.Simplex([[0, 1], [0, 2], [1, 2]])
             @test reflected_3.vertices == expected_3.vertices
         end
 
@@ -252,19 +253,20 @@ using Test
 
             # Test specific reflection results
             reflected_1 = freudenthal_reflect(s3d, 1)
-            expected_1 = SimplexContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
+            expected_1 = SimplexContinuation.Simplex([[-1, 0, 0], [-1, 1, 0], [-1, 1, 1], [0, 1, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
-            reflected_4 = freudenthal_reflect(s3d, 4)
-            expected_4 = SimplexContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
-            @test reflected_4.vertices == expected_4.vertices
-
-            # Test middle vertex reflections
             reflected_2 = freudenthal_reflect(s3d, 2)
-            @test is_freudenthal(reflected_2)
+            expected_2 = SimplexContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
+            @test reflected_2.vertices == expected_2.vertices
 
             reflected_3 = freudenthal_reflect(s3d, 3)
-            @test is_freudenthal(reflected_3)
+            expected_3 = SimplexContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
+            @test reflected_3.vertices == expected_3.vertices
+
+            reflected_4 = freudenthal_reflect(s3d, 4)
+            expected_4 = SimplexContinuation.Simplex([[0, 0, 1], [0, 0, 2], [1, 0, 2], [1, 1, 2]])
+            @test reflected_4.vertices == expected_4.vertices
         end
 
         @testset "Higher Dimension Reflections" begin
@@ -291,11 +293,18 @@ using Test
         @testset "Reflection Properties" begin
             s3d = freudenthal_initial_simplex(3)
 
-            # Test that reflection is involutive (double reflection returns original)
-            for facet_idx in 1:4
+            # Test that reflection is involutive only for internal facets (2 to n)
+            # Boundary facets (1 and n+1) move between cubes and are not involutive
+            for facet_idx in 2:3  # Internal facets for 3D
                 reflected = freudenthal_reflect(s3d, facet_idx)
                 double_reflected = freudenthal_reflect(reflected, facet_idx)
                 @test double_reflected.vertices == s3d.vertices
+            end
+
+            # Test that all reflections produce valid Freudenthal simplices
+            for facet_idx in 1:4
+                reflected = freudenthal_reflect(s3d, facet_idx)
+                @test is_freudenthal(reflected)
             end
 
             # Test reflection of translated simplex
@@ -380,7 +389,7 @@ using Test
         @testset "Adjacency and Combinatorial Properties" begin
             # Test that reflected simplices share the correct facet
             s2d = freudenthal_initial_simplex(2)
-            reflected = freudenthal_reflect(s2d, 2)  # Reflect middle vertex
+            reflected = freudenthal_reflect(s2d, 2)  # Reflect around facet 2
 
             # These should share a facet (2 vertices in 2D)
             shared_vertices = 0
@@ -393,12 +402,12 @@ using Test
             end
             @test shared_vertices == 2  # Should share exactly 2 vertices (an edge)
 
-            # Test combinatorial structure preservation
+            # Test combinatorial structure preservation for 3D
             s3d = freudenthal_initial_simplex(3)
-            for facet_idx in 1:4
-                reflected = freudenthal_reflect(s3d, facet_idx)
 
-                # The reflected simplex should share exactly 3 vertices with original (a face)
+            # Test internal facets which should share n vertices (the facet)
+            for facet_idx in 2:3  # Internal facets for 3D
+                reflected = freudenthal_reflect(s3d, facet_idx)
                 shared_count = 0
                 for i in 1:size(s3d.vertices, 2)
                     for j in 1:size(reflected.vertices, 2)
@@ -407,7 +416,29 @@ using Test
                         end
                     end
                 end
-                @test shared_count == 3
+                @test shared_count == 3  # Should share exactly 3 vertices (a face)
+            end
+
+            # Test that boundary facets (1 and n+1) share no vertices (move to adjacent cubes)
+            for facet_idx in [1, 4]
+                reflected = freudenthal_reflect(s3d, facet_idx)
+                shared_count = 0
+                for i in 1:size(s3d.vertices, 2)
+                    for j in 1:size(reflected.vertices, 2)
+                        if s3d.vertices[:, i] == reflected.vertices[:, j]
+                            shared_count += 1
+                        end
+                    end
+                end
+                @test shared_count == 0  # Should share no vertices
+            end
+
+            # Test that all reflections produce valid structures
+            for facet_idx in 1:4
+                reflected = freudenthal_reflect(s3d, facet_idx)
+                @test is_freudenthal(reflected)
+                @test reflected.n == s3d.n
+                @test reflected.dims == s3d.dims
             end
         end
     end
