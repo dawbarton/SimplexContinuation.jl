@@ -219,9 +219,9 @@ using Test
             end
 
             # Test specific reflection results
-            # Reflecting around facet 1 moves to previous cube
+            # Reflecting around facet 1 moves to next cube
             reflected_1 = freudenthal_reflect(s2d, 1)
-            expected_1 = SimplexContinuation.Simplex([[-1, 0], [-1, 1], [0, 1]])
+            expected_1 = SimplexContinuation.Simplex([[1, 0], [1, 1], [2, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
             # Test double reflection returns to original only for internal facets
@@ -233,9 +233,9 @@ using Test
             expected_2 = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
             @test reflected_2.vertices == expected_2.vertices
 
-            # Test reflection around facet 3 moves to next cube
+            # Test reflection around facet 3 moves to previous cube
             reflected_3 = freudenthal_reflect(s2d, 3)
-            expected_3 = SimplexContinuation.Simplex([[0, 1], [0, 2], [1, 2]])
+            expected_3 = SimplexContinuation.Simplex([[0, -1], [0, 0], [1, 0]])
             @test reflected_3.vertices == expected_3.vertices
         end
 
@@ -253,7 +253,7 @@ using Test
 
             # Test specific reflection results
             reflected_1 = freudenthal_reflect(s3d, 1)
-            expected_1 = SimplexContinuation.Simplex([[-1, 0, 0], [-1, 1, 0], [-1, 1, 1], [0, 1, 1]])
+            expected_1 = SimplexContinuation.Simplex([[1, 0, 0], [1, 1, 0], [1, 1, 1], [2, 1, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
             reflected_2 = freudenthal_reflect(s3d, 2)
@@ -265,7 +265,7 @@ using Test
             @test reflected_3.vertices == expected_3.vertices
 
             reflected_4 = freudenthal_reflect(s3d, 4)
-            expected_4 = SimplexContinuation.Simplex([[0, 0, 1], [0, 0, 2], [1, 0, 2], [1, 1, 2]])
+            expected_4 = SimplexContinuation.Simplex([[0, 0, -1], [0, 0, 0], [1, 0, 0], [1, 1, 0]])
             @test reflected_4.vertices == expected_4.vertices
         end
 
@@ -419,7 +419,7 @@ using Test
                 @test shared_count == 3  # Should share exactly 3 vertices (a face)
             end
 
-            # Test that boundary facets (1 and n+1) share no vertices (move to adjacent cubes)
+            # Test that boundary facets (1 and n+1) also share exactly 3 vertices (a face)
             for facet_idx in [1, 4]
                 reflected = freudenthal_reflect(s3d, facet_idx)
                 shared_count = 0
@@ -430,7 +430,7 @@ using Test
                         end
                     end
                 end
-                @test shared_count == 0  # Should share no vertices
+                @test shared_count == 3  # Should share exactly 3 vertices (a face)
             end
 
             # Test that all reflections produce valid structures

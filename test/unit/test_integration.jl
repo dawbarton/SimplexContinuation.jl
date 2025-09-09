@@ -92,7 +92,7 @@ using Test
 
         @testset "Unsigned Integer Types" begin
             # Test with unsigned types where applicable
-            # Note: facet 1 reflection moves to previous cube which can cause underflow
+            # Note: facet n+1 reflection moves to previous cube which can cause underflow
             # for unsigned types starting at 0, so test with translated simplex
             for T in [UInt8, UInt16, UInt32, UInt64]
                 # Use translated simplex to avoid underflow
@@ -101,8 +101,8 @@ using Test
                 @test eltype(s) == T
                 @test is_freudenthal(s)
 
-                # Test internal facet reflection (safe for unsigned types)
-                reflected = freudenthal_reflect(s, 2)
+                # Test facet 1 reflection (safe for unsigned types - moves to next cube)
+                reflected = freudenthal_reflect(s, 1)
                 @test eltype(reflected) == T
                 @test is_freudenthal(reflected)
             end
@@ -199,11 +199,11 @@ using Test
             @test is_freudenthal(reflected_1d_1)
             @test is_freudenthal(reflected_1d_2)
 
-            # In 1D, reflection around facet 1 moves to previous cube
-            expected_1d_1 = SimplexContinuation.Simplex([[-1], [0]])
+            # In 1D, reflection around facet 1 moves to next cube
+            expected_1d_1 = SimplexContinuation.Simplex([[1], [2]])
             @test reflected_1d_1.vertices == expected_1d_1.vertices
-            # Reflection around facet 2 moves to next cube
-            expected_1d_2 = SimplexContinuation.Simplex([[1], [2]])
+            # Reflection around facet 2 moves to previous cube
+            expected_1d_2 = SimplexContinuation.Simplex([[-1], [0]])
             @test reflected_1d_2.vertices == expected_1d_2.vertices
 
             # Test geometric reflection on 1D

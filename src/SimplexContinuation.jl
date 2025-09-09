@@ -264,12 +264,12 @@ function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integ
     if facet_index == 1
         # Opposite v0: move to previous cube
         coord = increment_order[1]
-        base_vertex[coord] -= 1
+        base_vertex[coord] += 1
         increment_order = @views vcat(increment_order[2:end], increment_order[1])
     elseif facet_index == n + 1
         # Opposite vn: move to next cube
         coord = increment_order[end]
-        base_vertex[coord] += 1
+        base_vertex[coord] -= 1
         increment_order = @views vcat(increment_order[end], increment_order[1:(end - 1)])
     else
         # Internal facet: swap adjacent
