@@ -140,13 +140,11 @@ function reflect(simplex::Simplex{T}, facet_index) where {T}
 end
 
 """
-    is_freudenthal(simplex::Simplex{<: Integer})
+    is_freudenthal(simplex::Simplex)
 
 Check if a simplex follows the structure of a Freudenthal triangulation.
-A simplex is Freudenthal if it can be obtained by permuting the coordinates
-of the initial Freudenthal simplex and then translating by an integer vector.
 """
-function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
+function is_freudenthal(simplex::Simplex)
     if simplex.n != simplex.dims
         return false
     end
@@ -170,9 +168,9 @@ function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
         zeros_count = 0
 
         for coord in vertex
-            if coord == 1
+            if coord ≈ 1
                 ones_count += 1
-            elseif coord == 0
+            elseif coord ≈ 0
                 zeros_count += 1
             else
                 return false
@@ -190,9 +188,9 @@ function is_freudenthal(simplex::Simplex{T}) where {T <: Integer}
         diff = translated_vertices[:, i] - translated_vertices[:, i - 1]
         unit_vector_count = 0
         for coord in diff
-            if coord == 1
+            if coord ≈ 1
                 unit_vector_count += 1
-            elseif coord != 0
+            elseif coord ≉ 0
                 return false
             end
         end
@@ -216,9 +214,6 @@ function freudenthal_initial_simplex(T, n)
     if n < 1
         throw(ArgumentError("Dimension must be at least 1"))
     end
-    if !(T <: Integer)
-        throw(ArgumentError("Type T must be a subtype of Integer"))
-    end
     simplex = Simplex{T}(undef, n, n)
     for j in 1:(n + 1)
         for i in 1:n
@@ -230,59 +225,29 @@ end
 freudenthal_initial_simplex(n) = freudenthal_initial_simplex(Int, n)
 
 """
-    freudenthal_reflect(simplex::Simplex{<:Integer}, facet_index)
+    freudenthal_reflect(simplex::Simplex, facet_index)
 
 Reflect a simplex in a Freudenthal triangulation around one of its facets. Note
 that this preserves the Freudenthal structure and so is not a general
 reflection. Returns a new simplex.
 """
-function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T <: Integer}
-    n = simplex.n
-    dims = simplex.dims
-    if facet_index < 1 || facet_index > n + 1
-        throw(ArgumentError("Facet index must be between 1 and $(n + 1)"))
+function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T}
+    if facet_index < 1 || facet_index > simplex.n + 1
+        throw(ArgumentError("Facet index must be between 1 and $(simplex.n + 1)"))
     end
-    if n != dims
+    if simplex.n != simplex.dims
         throw(ArgumentError("Only full-dimensional simplices supported"))
     end
-
-    # Recover permutation
-    increment_order = zeros(Int, n)
-    for i in 2:(n + 1)
-        for j in 1:dims
-            if simplex.vertices[j, i] - simplex.vertices[j, i - 1] == 1
-                increment_order[i - 1] = j
-                break
-            end
-        end
-        if increment_order[i - 1] == 0
-            throw(ArgumentError("Invalid Freudenthal simplex"))
-        end
-    end
-
-    base_vertex = simplex.vertices[:, 1]  # slicing creates a copy, so don't copy explicitly
+    new_simplex = Simplex{T}(undef, simplex.n, simplex.dims)
     if facet_index == 1
-        # Opposite v0: move to previous cube
-        coord = increment_order[1]
-        base_vertex[coord] += 1
-        increment_order = @views vcat(increment_order[2:end], increment_order[1])
-    elseif facet_index == n + 1
-        # Opposite vn: move to next cube
-        coord = increment_order[end]
-        base_vertex[coord] -= 1
-        increment_order = @views vcat(increment_order[end], increment_order[1:(end - 1)])
+        @views copyto!(new_simplex.vertices[:, 1:(end - 1)], simplex.vertices[:, 2:end])
+        new_simplex.vertices[:, end] .= simplex.vertices[:, end] .- simplex.vertices[:, facet_index] .+ simplex.vertices[:, facet_index + 1]
+    elseif facet_index == simplex.n + 1
+        @views copyto!(new_simplex.vertices[:, 2:end], simplex.vertices[:, 1:(end - 1)])
+        new_simplex.vertices[:, 1] .= simplex.vertices[:, facet_index - 1] .- simplex.vertices[:, facet_index] .+ simplex.vertices[:, 1]
     else
-        # Internal facet: swap adjacent
-        i = facet_index - 1
-        increment_order[i], increment_order[i + 1] = increment_order[i + 1], increment_order[i]
-    end
-
-    # Rebuild simplex
-    new_simplex = Simplex{T}(undef, n, dims)
-    new_simplex.vertices[:, 1] .= base_vertex
-    for (i, inc) in enumerate(increment_order)
-        base_vertex[inc] += 1
-        new_simplex.vertices[:, i + 1] .= base_vertex
+        copyto!(new_simplex.vertices, simplex.vertices)
+        new_simplex.vertices[:, facet_index] .= simplex.vertices[:, facet_index - 1] .- simplex.vertices[:, facet_index] .+ simplex.vertices[:, facet_index + 1]
     end
     return new_simplex
 end

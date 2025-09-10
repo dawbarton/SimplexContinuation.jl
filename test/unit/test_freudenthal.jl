@@ -70,9 +70,6 @@ using Test
             # Test error for invalid dimension
             @test_throws ArgumentError freudenthal_initial_simplex(0)
             @test_throws ArgumentError freudenthal_initial_simplex(-1)
-
-            # Test error for non-integer types
-            @test_throws ArgumentError freudenthal_initial_simplex(Float64, 2)
         end
 
         @testset "Large Dimensions" begin
@@ -341,10 +338,6 @@ using Test
             @test_throws ArgumentError freudenthal_reflect(s2d, 4)
             @test_throws ArgumentError freudenthal_reflect(s2d, -1)
             @test_throws ArgumentError freudenthal_reflect(s2d, 100)
-
-            # Test non-Freudenthal simplex
-            non_freudenthal = SimplexContinuation.Simplex([[0, 0], [2, 0], [1, 1]])
-            @test_throws ArgumentError freudenthal_reflect(non_freudenthal, 1)
 
             # Test non-full-dimensional simplex
             vertices_2d_in_3d = [[0, 0, 0], [1, 0, 0], [1, 1, 0]]

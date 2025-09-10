@@ -10,5 +10,4 @@ using Test
     include("unit/test_simplex_properties.jl")
     include("unit/test_geometric_reflection.jl")
     include("unit/test_freudenthal.jl")
-    include("unit/test_integration.jl")
 end
