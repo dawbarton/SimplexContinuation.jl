@@ -139,12 +139,17 @@ function reflect(simplex::Simplex{T}, facet_index) where {T}
     return new_simplex
 end
 
+_isapprox(a::T, b) where {T} = isapprox(a, b; atol = sqrt(eps(T)), rtol = sqrt(eps(T)))
+_isapprox(a::Integer, b) = (a == b)
+
 """
-    is_freudenthal(simplex::Simplex)
+    is_freudenthal(simplex::Simplex{T}; [isapprox])
 
 Check if a simplex follows the structure of a Freudenthal triangulation.
+`isapprox` can be specified for non-integer simplicies (defaults to
+`Base.isapprox` with `atol=rtol=sqrt(eps)`.)
 """
-function is_freudenthal(simplex::Simplex)
+function is_freudenthal(simplex::Simplex; isapprox = _isapprox)
     if simplex.n != simplex.dims
         return false
     end
@@ -168,9 +173,9 @@ function is_freudenthal(simplex::Simplex)
         zeros_count = 0
 
         for coord in vertex
-            if coord ≈ 1
+            if isapprox(coord, 1)
                 ones_count += 1
-            elseif coord ≈ 0
+            elseif isapprox(coord, 0)
                 zeros_count += 1
             else
                 return false
@@ -188,9 +193,9 @@ function is_freudenthal(simplex::Simplex)
         diff = translated_vertices[:, i] - translated_vertices[:, i - 1]
         unit_vector_count = 0
         for coord in diff
-            if coord ≈ 1
+            if isapprox(coord, 1)
                 unit_vector_count += 1
-            elseif coord ≉ 0
+            elseif !isapprox(coord, 0)
                 return false
             end
         end

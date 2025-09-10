@@ -165,8 +165,8 @@ using Test
             @test !is_freudenthal(wrong_simplex)
         end
 
-        @testset "Different Integer Types" begin
-            # Test with different integer types
+        @testset "Different Number Types" begin
+            # Test with different number types
             vertices_int8 = [[Int8(0), Int8(0)], [Int8(0), Int8(1)], [Int8(1), Int8(1)]]
             simplex_int8 = SimplexContinuation.Simplex(vertices_int8)
             @test is_freudenthal(simplex_int8)
@@ -178,6 +178,14 @@ using Test
             vertices_int64 = [[Int64(0), Int64(0)], [Int64(1), Int64(0)], [Int64(1), Int64(1)]]
             simplex_int64 = SimplexContinuation.Simplex(vertices_int64)
             @test is_freudenthal(simplex_int64)
+
+            vertices_float64 = [[Float64(0), Float64(0)], [Float64(1), Float64(0)], [Float64(1), Float64(1)]]
+            simplex_float64 = SimplexContinuation.Simplex(vertices_float64)
+            @test is_freudenthal(simplex_float64)
+
+            vertices_float64eps = [[Float64(1.0e-12), Float64(-1.0e-12)], [Float64(1 + 1.0e-12), Float64(1.0e-12)], [Float64(1 - 1.0e-12), Float64(1 + 1.0e-12)]]
+            simplex_float64eps = SimplexContinuation.Simplex(vertices_float64eps)
+            @test is_freudenthal(simplex_float64eps)
         end
 
         @testset "Translated Freudenthal Simplices" begin
