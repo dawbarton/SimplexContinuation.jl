@@ -7,6 +7,8 @@ const FSVector{T} = FixedSizeVectorDefault{T}
 
 export Simplex
 export simplex_dimension, space_dimension, reflect, is_freudenthal, freudenthal_initial_simplex, freudenthal_reflect
+export get_facet, barycenter
+export continuation, ContinuationPath
 
 """
     Simplex{T}(vertices)
@@ -255,6 +257,266 @@ function freudenthal_reflect(simplex::Simplex{T}, facet_index) where {T}
         new_simplex.vertices[:, facet_index] .= simplex.vertices[:, facet_index - 1] .- simplex.vertices[:, facet_index] .+ simplex.vertices[:, facet_index + 1]
     end
     return new_simplex
+end
+
+# ── Phase 1: Geometric utilities ─────────────────────────────────────────────
+
+"""
+    get_facet(simplex, facet_index)
+
+Return the facet of `simplex` opposite vertex `facet_index` as an `(n-1)`-simplex.
+The returned simplex has the same ambient dimension but one fewer vertex.
+"""
+function get_facet(simplex::Simplex{T}, facet_index) where {T}
+    if facet_index < 1 || facet_index > simplex.n + 1
+        throw(ArgumentError("Facet index must be between 1 and $(simplex.n + 1)"))
+    end
+    facet = Simplex{T}(undef, simplex.n - 1, simplex.dims)
+    j = 1
+    for i in 1:(simplex.n + 1)
+        if i != facet_index
+            facet.vertices[:, j] .= simplex.vertices[:, i]
+            j += 1
+        end
+    end
+    return facet
+end
+
+"""
+    barycenter(simplex)
+
+Return the barycenter (centroid) of `simplex` as a `Vector`.
+"""
+function barycenter(simplex::Simplex{T}) where {T}
+    result = zeros(T, simplex.dims)
+    for i in 1:(simplex.n + 1)
+        result .+= simplex.vertices[:, i]
+    end
+    return result ./ (simplex.n + 1)
+end
+
+# ── Phase 2: Labelled simplex ─────────────────────────────────────────────────
+
+# Internal: pairs a Simplex with residuals f(v_k, p) at each vertex.
+# `residuals` has shape (codim) × (n+1) where codim = dims - 1 for full-dimensional use.
+struct LabeledSimplex{T, R}
+    simplex::Simplex{T}
+    residuals::FixedSizeMatrixDefault{R}
+end
+
+function label_simplex(simplex::Simplex{T}, f, p) where {T}
+    r1 = f(view(simplex.vertices, :, 1), p)
+    R = eltype(r1)
+    m = length(r1)
+    n_verts = simplex.n + 1
+    residuals = FixedSizeMatrixDefault{R}(undef, m, n_verts)
+    residuals[:, 1] .= r1
+    for i in 2:n_verts
+        residuals[:, i] .= f(view(simplex.vertices, :, i), p)
+    end
+    return LabeledSimplex{T, R}(simplex, residuals)
+end
+
+# ── Phase 3: Transversality ───────────────────────────────────────────────────
+
+# Build and solve the m×m transversality system for a facet.
+# `facet_residuals` is (m-1)×m: residuals at the m vertices of the facet.
+# Returns (β, is_transversal).
+function _facet_transversality(facet_residuals::AbstractMatrix)
+    R = eltype(facet_residuals)
+    m = size(facet_residuals, 2)
+    A = Matrix{R}(undef, m, m)
+    A[1:m-1, :] .= facet_residuals
+    for j in 1:m
+        A[m, j] = one(R)
+    end
+    b = zeros(R, m)
+    b[m] = one(R)
+    β = try
+        A \ b
+    catch
+        return zeros(R, m), false
+    end
+    tol = 1e-8
+    return β, all(x -> isfinite(x) && -tol ≤ x ≤ 1 + tol, β)
+end
+
+# Check transversality of the facet OPPOSITE vertex `facet_index` in a LabeledSimplex.
+function check_transversality(ls::LabeledSimplex{T, R}, facet_index) where {T, R}
+    n = ls.simplex.n
+    m_res = size(ls.residuals, 1)
+    facet_residuals = Matrix{R}(undef, m_res, n)
+    j = 1
+    for i in 1:(n + 1)
+        if i != facet_index
+            facet_residuals[:, j] .= view(ls.residuals, :, i)
+            j += 1
+        end
+    end
+    return _facet_transversality(facet_residuals)
+end
+
+# Find the exit facet (first transversal facet that is not the entry facet).
+# Returns (facet_index, β) or (nothing, nothing).
+function find_exit_facet(ls::LabeledSimplex, entry_facet_index)
+    for i in 1:(ls.simplex.n + 1)
+        i == entry_facet_index && continue
+        β, ok = check_transversality(ls, i)
+        ok && return i, β
+    end
+    return nothing, nothing
+end
+
+# Find any transversal facet (used for initialisation).
+function _find_any_transversal_facet(ls::LabeledSimplex)
+    for i in 1:(ls.simplex.n + 1)
+        β, ok = check_transversality(ls, i)
+        ok && return i, β
+    end
+    return nothing, nothing
+end
+
+# Compute the barycentric interpolation of the zero crossing on the given facet.
+function facet_zero_point(ls::LabeledSimplex{T}, facet_index, β) where {T}
+    result = zeros(T, ls.simplex.dims)
+    j = 1
+    for i in 1:(ls.simplex.n + 1)
+        if i != facet_index
+            result .+= β[j] .* view(ls.simplex.vertices, :, i)
+            j += 1
+        end
+    end
+    return result
+end
+
+# ── Phase 4: Pivot ────────────────────────────────────────────────────────────
+
+# After freudenthal_reflect(simplex, exit_facet_index), the entry facet in the new
+# simplex has the same index when exit_facet_index is interior, but shifts for the
+# boundary cases because vertices are renumbered.
+function _pivot_entry_facet(exit_facet_index, n)
+    exit_facet_index == 1     && return n + 1
+    exit_facet_index == n + 1 && return 1
+    return exit_facet_index
+end
+
+# Pivot across the exit facet: reflect geometry, transfer residuals, evaluate new vertex.
+# Returns (new_labeled_simplex, entry_facet_in_new_simplex).
+function pivot(ls::LabeledSimplex{T, R}, exit_facet_index, f, p) where {T, R}
+    n = ls.simplex.n
+    new_simplex = freudenthal_reflect(ls.simplex, exit_facet_index)
+    entry_facet = _pivot_entry_facet(exit_facet_index, n)
+
+    new_residuals = FixedSizeMatrixDefault{R}(undef, size(ls.residuals, 1), n + 1)
+
+    if exit_facet_index == 1
+        # Old vertices 2..n+1 → new positions 1..n; new vertex at position n+1.
+        copyto!(view(new_residuals, :, 1:n), view(ls.residuals, :, 2:(n + 1)))
+        new_residuals[:, n + 1] .= f(view(new_simplex.vertices, :, n + 1), p)
+    elseif exit_facet_index == n + 1
+        # Old vertices 1..n → new positions 2..n+1; new vertex at position 1.
+        copyto!(view(new_residuals, :, 2:(n + 1)), view(ls.residuals, :, 1:n))
+        new_residuals[:, 1] .= f(view(new_simplex.vertices, :, 1), p)
+    else
+        # Only vertex at exit_facet_index changes; all others stay in place.
+        copyto!(new_residuals, ls.residuals)
+        new_residuals[:, exit_facet_index] .= f(view(new_simplex.vertices, :, exit_facet_index), p)
+    end
+
+    return LabeledSimplex{T, R}(new_simplex, new_residuals), entry_facet
+end
+
+# ── Phase 5: Initialisation ───────────────────────────────────────────────────
+
+_grain_vec(grain::Number, n, ::Type{T}) where {T} = fill(T(grain), n)
+_grain_vec(grain, n, ::Type{T}) where {T} = T.(grain)
+
+# Find an initial LabeledSimplex transversal to the zero set of f near y0.
+# The simplex is a scaled and centred Freudenthal simplex.
+# Returns (labeled_simplex, entry_facet_index).
+function find_transverse(f, p, y0, grain)
+    n = length(y0)
+    T = float(eltype(y0))
+    gv = _grain_vec(grain, n, T)
+
+    unit_simplex = freudenthal_initial_simplex(T, n)
+    bc = barycenter(unit_simplex)
+    translation = T.(y0) .- bc .* gv
+
+    scaled = Simplex{T}(undef, n, n)
+    for i in 1:(n + 1)
+        scaled.vertices[:, i] .= view(unit_simplex.vertices, :, i) .* gv .+ translation
+    end
+
+    ls = label_simplex(scaled, f, p)
+    facet_idx, _ = _find_any_transversal_facet(ls)
+    !isnothing(facet_idx) && return ls, facet_idx
+
+    # Try immediate Freudenthal neighbours.
+    for k in 1:(n + 1)
+        neighbour = freudenthal_reflect(scaled, k)
+        nls = label_simplex(neighbour, f, p)
+        facet_idx, _ = _find_any_transversal_facet(nls)
+        !isnothing(facet_idx) && return nls, facet_idx
+    end
+
+    throw(ArgumentError("Could not find a transversal simplex near y0; try adjusting grain."))
+end
+
+# ── Phase 6: Iterator API ─────────────────────────────────────────────────────
+
+"""
+    ContinuationPath{T, R, F, P}
+
+Iterator over the zero curve of `f(x, p) = 0`. Each `iterate` call yields the
+approximate coordinates of the zero crossing on the current exit facet and
+advances to the next simplex. Create via `continuation`.
+"""
+struct ContinuationPath{T, R, F, P}
+    f::F
+    p::P
+    initial_ls::LabeledSimplex{T, R}
+    initial_entry_facet::Int
+    maxsteps::Int
+end
+
+"""
+    continuation(f, p, y0; grain=1.0, maxsteps=1000)
+
+Return a `ContinuationPath` iterator that traces the zero curve of `f(x, p) = 0`
+starting near `y0`. `f` must have the signature `f(x, p) -> res` (SciML convention).
+`grain` sets the simplex step size; smaller values give higher spatial resolution.
+`grain` may be a scalar (uniform scaling) or a vector/tuple of length `n` for
+per-dimension scaling, useful when the state variables have different natural scales.
+"""
+function continuation(f, p, y0; grain = 1.0, maxsteps = 1000)
+    ls, entry_facet = find_transverse(f, p, y0, grain)
+    T = eltype(ls.simplex)
+    R = eltype(ls.residuals)
+    return ContinuationPath{T, R, typeof(f), typeof(p)}(f, p, ls, entry_facet, maxsteps)
+end
+
+Base.IteratorSize(::Type{<:ContinuationPath}) = Base.SizeUnknown()
+Base.eltype(::Type{ContinuationPath{T, R, F, P}}) where {T, R, F, P} = Vector{T}
+
+function Base.iterate(path::ContinuationPath)
+    ls = path.initial_ls
+    entry = path.initial_entry_facet
+    exit_facet, β = find_exit_facet(ls, entry)
+    isnothing(exit_facet) && return nothing
+    point = facet_zero_point(ls, exit_facet, β)
+    new_ls, new_entry = pivot(ls, exit_facet, path.f, path.p)
+    return point, (new_ls, new_entry, 1)
+end
+
+function Base.iterate(path::ContinuationPath, state)
+    ls, entry, step = state
+    step ≥ path.maxsteps && return nothing
+    exit_facet, β = find_exit_facet(ls, entry)
+    isnothing(exit_facet) && return nothing
+    point = facet_zero_point(ls, exit_facet, β)
+    new_ls, new_entry = pivot(ls, exit_facet, path.f, path.p)
+    return point, (new_ls, new_entry, step + 1)
 end
 
 end  # module
