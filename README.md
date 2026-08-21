@@ -57,7 +57,7 @@ points = collect(Iterators.take(path, 50))
 
 ## Interface
 
-### `continuation(f, p, y0; grain, maxsteps)`
+### `continuation(f, p, y0; grain, maxsteps, corrector_steps, aux)`
 
 | Argument | Description |
 |---|---|
@@ -66,8 +66,27 @@ points = collect(Iterators.take(path, 50))
 | `y0` | Initial point near the zero curve (`Vector`, any numeric type) |
 | `grain` | Step size (scalar or vector; see below) |
 | `maxsteps` | Maximum number of continuation steps (default `1000`) |
+| `corrector_steps` | Newton corrections applied to each exit point beyond the PL approximation (default `0`; see below) |
+| `aux` | Optional extra function `aux(x, p) -> value`, interpolated onto each exit point (default `nothing`; see below) |
 
-Returns a `ContinuationPath` iterator whose elements are `Vector{T}` points lying approximately on the zero curve.
+Returns a `ContinuationPath` iterator whose elements are `Vector{T}` points lying approximately on the zero curve, or `(point, aux_value)` tuples when `aux` is given.
+
+### The `corrector_steps` parameter
+
+By default (`corrector_steps = 0`), each exit point is a purely piecewise-linear approximation to the zero crossing, accurate to `O(grain)`. Setting `corrector_steps = k` applies up to `k` modified-Newton corrections on the facet, each costing one extra evaluation of `f`, and stops early once the residual stops improving or a step would leave the facet. This can improve accuracy by orders of magnitude for smooth, low-noise `f`, but amplifies measurement noise — leave it at `0` for experimental/noisy residuals.
+
+### The `aux` parameter
+
+`aux(x, p) -> value` is evaluated at the same simplex vertices as `f` and interpolated onto each exit point using the same barycentric coordinates. Useful when a quantity of interest is nearly free to obtain alongside the residual (e.g. from the same measurement or solve) and cheaper to interpolate than to re-evaluate exactly at the crossing point:
+
+```julia
+f(x, _) = [x[1]^2 + x[2]^2 - 1.0]
+g(x, _) = [atan(x[2], x[1])]   # angle around the circle
+path = continuation(f, nothing, [1.0, 0.0]; grain = 0.2, aux = g)
+for (pt, angle) in path
+    println(pt, "  ", angle)
+end
+```
 
 ### The `grain` parameter
 
@@ -131,3 +150,26 @@ The method triangulates Rⁿ using the Freudenthal triangulation — a regular t
 4. Pivots into the adjacent simplex sharing that facet and repeats.
 
 No derivatives or nonlinear solves are required; each step costs one function evaluation and one small linear solve (n×n).
+
+## Diagnostics
+
+These functions help choose and validate `y0` and `grain` before (or independent of) calling `continuation`. They matter most when `f` is a noisy measurement rather than a clean numerical residual — a use case this package's algorithm was designed around — but are equally applicable to numerical problems. Each is a plain function of `f`, `p`, and the relevant point/`grain`; none of them hold state, so e.g. `sens_ref` from `check_scaling` must be passed explicitly to `measure_noise`/`curr_fom` if its normalisation is wanted there.
+
+| Function | Purpose |
+|---|---|
+| `check_start_point(f, p, y0; grain)` | Is `‖f(y0, p)‖` small enough relative to `grain` to bother continuing? |
+| `improve_start_point(f, p, y0; grain)` | Move `y0` closer to the zero set by one Newton step (last coordinate held fixed) |
+| `check_scaling(f, p, y0; grain)` | Are the coordinates of `y0` scaled consistently relative to `grain`? Also returns `sens_ref` |
+| `score_start_point(f, p, y0, grain; ntrials)` | Monte Carlo check: does the zero curve reliably thread a `grain`-sized simplex at `y0`? |
+| `measure_noise(f, p, y; n, sens_ref, grain)` | Repeat-measurement noise floor, Jacobian SNR, and a suggested `grain` |
+| `curr_fom(f, p, y; sens_ref)` | Figure of merit for a point already on the path — watch its trend, not its absolute value, to detect a lost branch |
+
+```julia
+f(x, _) = [x[1]^2 + x[2]^2 - 1.0]
+y0 = [1.0, 0.0]
+
+check_start_point(f, nothing, y0; grain = 0.2)          # (norm = ..., threshold = ..., ok = true)
+cs = check_scaling(f, nothing, y0; grain = 0.2)          # (sensitivities = ..., sens_ref = ..., ...)
+score_start_point(f, nothing, y0, 0.2)                   # (score = ..., hits = ..., ntrials = 20)
+measure_noise(f, nothing, y0; sens_ref = cs.sens_ref)    # (sigma = ..., snr = ..., ...)
+```

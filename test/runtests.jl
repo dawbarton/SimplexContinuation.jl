@@ -10,5 +10,6 @@ using Test
     include("unit/test_geometric_reflection.jl")
     include("unit/test_freudenthal.jl")
     include("unit/test_geometric_utilities.jl")
+    include("unit/test_diagnostics.jl")
     include("integration/test_continuation.jl")
 end

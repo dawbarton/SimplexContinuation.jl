@@ -2,3 +2,7 @@
 *.jl.cov
 *.jl.mem
 /Manifest*.toml
+
+# Melville's reference C++ implementation (not this project's code)
+/codim1.cc
+/codim1.h

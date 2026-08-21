@@ -1,4 +1,5 @@
 using SimplicialContinuation
+using LinearAlgebra: norm
 using Test
 
 @testset "Continuation" begin
@@ -13,12 +14,12 @@ using Test
 
         # Every yielded point should satisfy f ≈ 0
         for pt in points
-            @test abs(f(pt, nothing)[1]) < 1e-10
+            @test abs(f(pt, nothing)[1]) < 1.0e-10
         end
 
         # Points should be on the line x1 = x2
         for pt in points
-            @test abs(pt[1] - pt[2]) < 1e-10
+            @test abs(pt[1] - pt[2]) < 1.0e-10
         end
     end
 
@@ -50,8 +51,8 @@ using Test
 
         for pt in points
             res = f(pt, nothing)
-            @test abs(res[1]) < 1e-10
-            @test abs(res[2]) < 1e-10
+            @test abs(res[1]) < 1.0e-10
+            @test abs(res[2]) < 1.0e-10
         end
     end
 
@@ -71,14 +72,14 @@ using Test
         # Ellipse: (x/2)^2 + y^2 = 1, i.e. x ∈ [-2,2], y ∈ [-1,1].
         # Using a scalar grain sized for y would be too coarse for x; a vector
         # grain lets each dimension be scaled independently.
-        f(x, _) = [(x[1]/2)^2 + x[2]^2 - 1.0]
+        f(x, _) = [(x[1] / 2)^2 + x[2]^2 - 1.0]
         y0 = [2.0, 0.0]
         path = continuation(f, nothing, y0; grain = (0.4, 0.2), maxsteps = 200)
 
         points = collect(Iterators.take(path, 20))
         @test length(points) == 20
         for pt in points
-            @test abs((pt[1]/2)^2 + pt[2]^2 - 1.0) < 0.1
+            @test abs((pt[1] / 2)^2 + pt[2]^2 - 1.0) < 0.1
         end
 
         # Tuple and Vector grain should both be accepted
@@ -96,6 +97,52 @@ using Test
         for pt in points
             r2 = pt[1]^2 + pt[2]^2
             @test abs(r2 - 4.0) < 0.2
+        end
+    end
+
+    @testset "Corrector step" begin
+        f(x, _) = [x[1]^2 + x[2]^2 - 1.0]
+        y0 = [1.0, 0.0]
+
+        path = continuation(f, nothing, y0; grain = 0.2, maxsteps = 50)
+        path_corr = continuation(f, nothing, y0; grain = 0.2, maxsteps = 50, corrector_steps = 3)
+
+        err(pt) = abs(norm(pt) - 1.0)
+        max_err = maximum(err, collect(path))
+        max_err_corr = maximum(err, collect(path_corr))
+
+        # The corrector refines the piecewise-linear crossing towards the true
+        # curve, so it should be substantially more accurate at the same grain.
+        @test max_err_corr < max_err / 10
+
+        # corrector_steps = 0 (the default) must reproduce plain PL behaviour exactly.
+        path_zero = continuation(f, nothing, y0; grain = 0.2, maxsteps = 50, corrector_steps = 0)
+        @test collect(path_zero) == collect(continuation(f, nothing, y0; grain = 0.2, maxsteps = 50))
+    end
+
+    @testset "Auxiliary function interpolation" begin
+        f(x, _) = [x[1]^2 + x[2]^2 - 1.0]
+        g(x, _) = [atan(x[2], x[1])]
+        y0 = [1.0, 0.0]
+
+        path = continuation(f, nothing, y0; grain = 0.2, maxsteps = 20, aux = g)
+        @test Base.eltype(typeof(path)) == Tuple{Vector{Float64}, Vector{Float64}}
+
+        for (pt, u) in Iterators.take(path, 10)
+            # The interpolated angle should track the true angle of the point
+            # to within the piecewise-linear approximation error.
+            @test abs(only(u) - atan(pt[2], pt[1])) < 0.05
+        end
+
+        # Without aux, the iterator still yields plain points.
+        plain_path = continuation(f, nothing, y0; grain = 0.2, maxsteps = 5)
+        @test Base.eltype(typeof(plain_path)) == Vector{Float64}
+
+        # aux and corrector_steps compose.
+        path_both = continuation(f, nothing, y0; grain = 0.2, maxsteps = 5, aux = g, corrector_steps = 2)
+        for (pt, u) in path_both
+            @test abs(norm(pt) - 1.0) < 1.0e-3
+            @test abs(only(u) - atan(pt[2], pt[1])) < 0.05
         end
     end
 end
