@@ -1,4 +1,4 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
 @testset "Freudenthal Functions" begin
@@ -103,88 +103,88 @@ using Test
             s2d = freudenthal_initial_simplex(2)
             offset = [3, 5]
             translated_vertices = [s2d.vertices[:, i] .+ offset for i in 1:size(s2d.vertices, 2)]
-            translated_simplex = SimplexContinuation.Simplex(translated_vertices)
+            translated_simplex = SimplicialContinuation.Simplex(translated_vertices)
             @test is_freudenthal(translated_simplex)
 
             # Test other valid 2D Freudenthal simplex (y-then-x order)
-            valid_2d = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
+            valid_2d = SimplicialContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
             @test is_freudenthal(valid_2d)
 
             # Test other valid 3D Freudenthal simplices
-            valid_3d_1 = SimplexContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
+            valid_3d_1 = SimplicialContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
             @test is_freudenthal(valid_3d_1)
 
-            valid_3d_2 = SimplexContinuation.Simplex([[0, 0, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1]])
+            valid_3d_2 = SimplicialContinuation.Simplex([[0, 0, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1]])
             @test is_freudenthal(valid_3d_2)
 
-            valid_3d_3 = SimplexContinuation.Simplex([[0, 0, 0], [0, 0, 1], [0, 1, 1], [1, 1, 1]])
+            valid_3d_3 = SimplicialContinuation.Simplex([[0, 0, 0], [0, 0, 1], [0, 1, 1], [1, 1, 1]])
             @test is_freudenthal(valid_3d_3)
 
-            valid_3d_4 = SimplexContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
+            valid_3d_4 = SimplicialContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
             @test is_freudenthal(valid_3d_4)
 
-            valid_3d_5 = SimplexContinuation.Simplex([[0, 0, 0], [0, 1, 0], [0, 1, 1], [1, 1, 1]])
+            valid_3d_5 = SimplicialContinuation.Simplex([[0, 0, 0], [0, 1, 0], [0, 1, 1], [1, 1, 1]])
             @test is_freudenthal(valid_3d_5)
         end
 
         @testset "Invalid Freudenthal Simplices" begin
             # Test non-full-dimensional simplex
             vertices_2d_in_3d = [[0, 0, 0], [1, 0, 0], [1, 1, 0]]
-            simplex_2d_in_3d = SimplexContinuation.Simplex(vertices_2d_in_3d)
+            simplex_2d_in_3d = SimplicialContinuation.Simplex(vertices_2d_in_3d)
             @test !is_freudenthal(simplex_2d_in_3d)
 
             # Test arbitrary simplex
             arbitrary_vertices = [[0, 0], [1, 1], [2, 0]]
-            arbitrary_simplex = SimplexContinuation.Simplex(arbitrary_vertices)
+            arbitrary_simplex = SimplicialContinuation.Simplex(arbitrary_vertices)
             @test !is_freudenthal(arbitrary_simplex)
 
             # Test simplex with wrong coordinate values
             wrong_coords = [[0, 0], [2, 0], [2, 1]]
-            wrong_simplex = SimplexContinuation.Simplex(wrong_coords)
+            wrong_simplex = SimplicialContinuation.Simplex(wrong_coords)
             @test !is_freudenthal(wrong_simplex)
 
             # Test simplex with negative coordinates
             negative_coords = [[0, 0], [-1, 0], [-1, 1]]
-            negative_simplex = SimplexContinuation.Simplex(negative_coords)
+            negative_simplex = SimplicialContinuation.Simplex(negative_coords)
             @test !is_freudenthal(negative_simplex)
 
             # Test degenerate case
             degenerate_vertices = [[0, 0], [1, 0], [0, 0]]
-            degenerate_simplex = SimplexContinuation.Simplex(degenerate_vertices)
+            degenerate_simplex = SimplicialContinuation.Simplex(degenerate_vertices)
             @test !is_freudenthal(degenerate_simplex)
 
             # Test simplex with fractional coordinates
             # Note: is_freudenthal only works with Integer types, so we can't test this directly
             # fractional_coords = [[0, 0], [1, 0], [1, 0.5]]
-            # fractional_simplex = SimplexContinuation.Simplex(fractional_coords)
+            # fractional_simplex = SimplicialContinuation.Simplex(fractional_coords)
             # This would cause a MethodError since is_freudenthal requires Integer types
 
             # Test wrong increment pattern
             wrong_pattern = [[0, 0, 0], [1, 1, 0], [1, 1, 1], [1, 1, 1]]
-            wrong_simplex = SimplexContinuation.Simplex(wrong_pattern)
+            wrong_simplex = SimplicialContinuation.Simplex(wrong_pattern)
             @test !is_freudenthal(wrong_simplex)
         end
 
         @testset "Different Number Types" begin
             # Test with different number types
             vertices_int8 = [[Int8(0), Int8(0)], [Int8(0), Int8(1)], [Int8(1), Int8(1)]]
-            simplex_int8 = SimplexContinuation.Simplex(vertices_int8)
+            simplex_int8 = SimplicialContinuation.Simplex(vertices_int8)
             @test is_freudenthal(simplex_int8)
 
             vertices_uint = [[UInt(0), UInt(0)], [UInt(0), UInt(1)], [UInt(1), UInt(1)]]
-            simplex_uint = SimplexContinuation.Simplex(vertices_uint)
+            simplex_uint = SimplicialContinuation.Simplex(vertices_uint)
             @test is_freudenthal(simplex_uint)
 
             vertices_int64 = [[Int64(0), Int64(0)], [Int64(1), Int64(0)], [Int64(1), Int64(1)]]
-            simplex_int64 = SimplexContinuation.Simplex(vertices_int64)
+            simplex_int64 = SimplicialContinuation.Simplex(vertices_int64)
             @test is_freudenthal(simplex_int64)
 
             vertices_float64 = [[Float64(0), Float64(0)], [Float64(1), Float64(0)], [Float64(1), Float64(1)]]
-            simplex_float64 = SimplexContinuation.Simplex(vertices_float64)
+            simplex_float64 = SimplicialContinuation.Simplex(vertices_float64)
             @test is_freudenthal(simplex_float64)
 
             vertices_float64eps = [[Float64(1.0e-12), Float64(-1.0e-12)], [Float64(1 + 1.0e-12), Float64(1.0e-12)], [Float64(1 - 1.0e-12), Float64(1 + 1.0e-12)]]
-            simplex_float64eps = SimplexContinuation.Simplex(vertices_float64eps)
+            simplex_float64eps = SimplicialContinuation.Simplex(vertices_float64eps)
             @test is_freudenthal(simplex_float64eps)
         end
 
@@ -204,7 +204,7 @@ using Test
 
             for translation in translations
                 translated_vertices = [base_simplex.vertices[:, i] .+ translation for i in 1:size(base_simplex.vertices, 2)]
-                translated_simplex = SimplexContinuation.Simplex(translated_vertices)
+                translated_simplex = SimplicialContinuation.Simplex(translated_vertices)
                 @test is_freudenthal(translated_simplex)
             end
         end
@@ -226,7 +226,7 @@ using Test
             # Test specific reflection results
             # Reflecting around facet 1 moves to next cube
             reflected_1 = freudenthal_reflect(s2d, 1)
-            expected_1 = SimplexContinuation.Simplex([[1, 0], [1, 1], [2, 1]])
+            expected_1 = SimplicialContinuation.Simplex([[1, 0], [1, 1], [2, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
             # Test double reflection returns to original only for internal facets
@@ -235,12 +235,12 @@ using Test
             @test double_reflected_2.vertices == s2d.vertices
 
             # Test reflection around facet 2 (internal facet - swaps increments)
-            expected_2 = SimplexContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
+            expected_2 = SimplicialContinuation.Simplex([[0, 0], [0, 1], [1, 1]])
             @test reflected_2.vertices == expected_2.vertices
 
             # Test reflection around facet 3 moves to previous cube
             reflected_3 = freudenthal_reflect(s2d, 3)
-            expected_3 = SimplexContinuation.Simplex([[0, -1], [0, 0], [1, 0]])
+            expected_3 = SimplicialContinuation.Simplex([[0, -1], [0, 0], [1, 0]])
             @test reflected_3.vertices == expected_3.vertices
         end
 
@@ -258,19 +258,19 @@ using Test
 
             # Test specific reflection results
             reflected_1 = freudenthal_reflect(s3d, 1)
-            expected_1 = SimplexContinuation.Simplex([[1, 0, 0], [1, 1, 0], [1, 1, 1], [2, 1, 1]])
+            expected_1 = SimplicialContinuation.Simplex([[1, 0, 0], [1, 1, 0], [1, 1, 1], [2, 1, 1]])
             @test reflected_1.vertices == expected_1.vertices
 
             reflected_2 = freudenthal_reflect(s3d, 2)
-            expected_2 = SimplexContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
+            expected_2 = SimplicialContinuation.Simplex([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 1, 1]])
             @test reflected_2.vertices == expected_2.vertices
 
             reflected_3 = freudenthal_reflect(s3d, 3)
-            expected_3 = SimplexContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
+            expected_3 = SimplicialContinuation.Simplex([[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 1]])
             @test reflected_3.vertices == expected_3.vertices
 
             reflected_4 = freudenthal_reflect(s3d, 4)
-            expected_4 = SimplexContinuation.Simplex([[0, 0, -1], [0, 0, 0], [1, 0, 0], [1, 1, 0]])
+            expected_4 = SimplicialContinuation.Simplex([[0, 0, -1], [0, 0, 0], [1, 0, 0], [1, 1, 0]])
             @test reflected_4.vertices == expected_4.vertices
         end
 
@@ -315,7 +315,7 @@ using Test
             # Test reflection of translated simplex
             offset = [2, 3, 1]
             translated_vertices = [s3d.vertices[:, i] .+ offset for i in 1:size(s3d.vertices, 2)]
-            translated_simplex = SimplexContinuation.Simplex(translated_vertices)
+            translated_simplex = SimplicialContinuation.Simplex(translated_vertices)
             @test is_freudenthal(translated_simplex)
 
             reflected_translated = freudenthal_reflect(translated_simplex, 1)
@@ -324,7 +324,7 @@ using Test
             # Test that translation commutes with reflection
             reflected_then_translated = freudenthal_reflect(s3d, 1)
             reflected_then_translated_vertices = [reflected_then_translated.vertices[:, i] .+ offset for i in 1:size(reflected_then_translated.vertices, 2)]
-            reflected_then_translated_simplex = SimplexContinuation.Simplex(reflected_then_translated_vertices)
+            reflected_then_translated_simplex = SimplicialContinuation.Simplex(reflected_then_translated_vertices)
             @test reflected_translated.vertices == reflected_then_translated_simplex.vertices
         end
 
@@ -349,7 +349,7 @@ using Test
 
             # Test non-full-dimensional simplex
             vertices_2d_in_3d = [[0, 0, 0], [1, 0, 0], [1, 1, 0]]
-            simplex_2d_in_3d = SimplexContinuation.Simplex(vertices_2d_in_3d)
+            simplex_2d_in_3d = SimplicialContinuation.Simplex(vertices_2d_in_3d)
             @test_throws ArgumentError freudenthal_reflect(simplex_2d_in_3d, 1)
         end
 

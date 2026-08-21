@@ -1,17 +1,23 @@
-# SimplexContinuation.jl
+# SimplicialContinuation.jl
 
-[![Build Status](https://github.com/dawbarton/SimplexContinuation.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/dawbarton/SimplexContinuation.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/dawbarton/SimplexContinuation.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/dawbarton/SimplexContinuation.jl)
+[![Build Status](https://github.com/dawbarton/SimplicialContinuation.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/dawbarton/SimplicialContinuation.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/dawbarton/SimplicialContinuation.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/dawbarton/SimplicialContinuation.jl)
 [![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)
 [![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 
-Derivative-free, simplex-based codimension-1 continuation. Traces the zero set of a smooth map `f : Rⁿ → Rⁿ⁻¹` by marching through a Freudenthal triangulation without computing any derivatives or solving nonlinear systems. Based on the piecewise-linear continuation method described in:
+Derivative-free, simplex-based codimension-1 continuation. Traces the zero set of a smooth map `f : Rⁿ → Rⁿ⁻¹` by marching through a Freudenthal triangulation without computing any derivatives or solving nonlinear systems. The underlying piecewise-linear continuation method originates with:
+
+> Allgower, E. L. and Georg, K. (1980). Simplicial and Continuation Methods for Approximating Fixed Points and Solutions to Systems of Equations. *SIAM Review*, 22(1), 28–85.
+>
+> Allgower, E. L. and Georg, K. (2003). *Introduction to Numerical Continuation Methods.* SIAM Classics in Applied Mathematics 45.
+
+This package's specific approach follows the simplex-marching formulation described in:
 
 > Henderson, M. E. and Melville, R. (2023). *Piecewise Linear Continuation: Derivative-free Manifold Generation.*
 
 ## Overview
 
-Continuation methods trace a curve (or more generally a manifold) defined implicitly as the zero set of a system of equations. SimplexContinuation.jl does this without derivatives by tiling space with simplices and tracking which facet of each simplex the zero curve passes through.
+Continuation methods trace a curve (or more generally a manifold) defined implicitly as the zero set of a system of equations. SimplicialContinuation.jl does this without derivatives by tiling space with simplices and tracking which facet of each simplex the zero curve passes through.
 
 The map `f` follows the SciML convention:
 
@@ -26,7 +32,7 @@ f(x, p) -> residual
 ## Quick start
 
 ```julia
-using SimplexContinuation
+using SimplicialContinuation
 
 # Trace the unit circle: x₁² + x₂² = 1
 f(x, _) = [x[1]^2 + x[2]^2 - 1.0]

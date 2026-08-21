@@ -1,4 +1,4 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Printf
 
 # Trace the intersection of a sphere and a cylinder in R³.

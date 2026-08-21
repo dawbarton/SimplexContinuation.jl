@@ -1,9 +1,9 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
 @testset "Geometric Utilities" begin
     @testset "get_facet" begin
-        s = SimplexContinuation.Simplex([[0, 0], [1, 0], [0, 1]])
+        s = SimplicialContinuation.Simplex([[0, 0], [1, 0], [0, 1]])
 
         # Drop vertex 1: should give vertices 2 and 3
         f1 = get_facet(s, 1)
@@ -24,7 +24,7 @@ using Test
         @test f3.vertices[:, 2] == [1, 0]
 
         # 3D tetrahedron
-        s3 = SimplexContinuation.Simplex([[0,0,0],[1,0,0],[0,1,0],[0,0,1]])
+        s3 = SimplicialContinuation.Simplex([[0,0,0],[1,0,0],[0,1,0],[0,0,1]])
         f = get_facet(s3, 2)
         @test f.n == 2
         @test f.dims == 3
@@ -37,7 +37,7 @@ using Test
 
     @testset "barycenter" begin
         # Equilateral-ish triangle: exact centroid
-        s = SimplexContinuation.Simplex([[0, 0], [3, 0], [0, 3]])
+        s = SimplicialContinuation.Simplex([[0, 0], [3, 0], [0, 3]])
         bc = barycenter(s)
         @test bc ≈ [1.0, 1.0]
 
@@ -47,16 +47,16 @@ using Test
         @test bc_f ≈ [2/3, 1/3]
 
         # 1D line segment
-        s1 = SimplexContinuation.Simplex([[0.0], [4.0]])
+        s1 = SimplicialContinuation.Simplex([[0.0], [4.0]])
         @test barycenter(s1) ≈ [2.0]
 
         # 3D tetrahedron
-        s3 = SimplexContinuation.Simplex{Float64}([[0,0,0],[1,0,0],[0,1,0],[0,0,1]])
+        s3 = SimplicialContinuation.Simplex{Float64}([[0,0,0],[1,0,0],[0,1,0],[0,0,1]])
         bc3 = barycenter(s3)
         @test bc3 ≈ [0.25, 0.25, 0.25]
 
         # Type preservation: integer simplex → rational-style output
-        si = SimplexContinuation.Simplex([[0, 0], [2, 0], [0, 2]])
+        si = SimplicialContinuation.Simplex([[0, 0], [2, 0], [0, 2]])
         @test barycenter(si) == [2/3, 2/3]
     end
 end

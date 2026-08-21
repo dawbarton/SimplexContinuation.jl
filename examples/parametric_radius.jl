@@ -1,4 +1,4 @@
-using SimplexContinuation
+using SimplicialContinuation
 
 # Trace a circle whose radius is supplied as a parameter.
 # f(x, r) = x₁² + x₂² - r = 0

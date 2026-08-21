@@ -1,11 +1,11 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
 @testset "Geometric Reflection Function" begin
     @testset "2D Geometric Reflections" begin
         # Create a simple 2D triangle
         vertices = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
-        s = SimplexContinuation.Simplex(vertices)
+        s = SimplicialContinuation.Simplex(vertices)
 
         # Test reflection across each facet
         for facet_idx in 1:3
@@ -31,7 +31,7 @@ using Test
     @testset "3D Geometric Reflections" begin
         # Create a simple 3D tetrahedron
         vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-        s = SimplexContinuation.Simplex(vertices)
+        s = SimplicialContinuation.Simplex(vertices)
 
         # Test reflection across each facet
         for facet_idx in 1:4
@@ -52,7 +52,7 @@ using Test
 
     @testset "Reflection Properties" begin
         vertices = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
-        s = SimplexContinuation.Simplex(vertices)
+        s = SimplicialContinuation.Simplex(vertices)
 
         # Test that double reflection returns close to original (involution property)
         for facet_idx in 1:3
@@ -69,7 +69,7 @@ using Test
 
         # Test reflection preserves distances within the facet
         # (Points on the facet should remain fixed)
-        s_3d = SimplexContinuation.Simplex([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        s_3d = SimplicialContinuation.Simplex([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         reflected_3d = reflect(s_3d, 1)
 
         # When reflecting across facet opposite to vertex 1,
@@ -81,7 +81,7 @@ using Test
 
     @testset "Reflection Error Handling" begin
         vertices = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
-        s = SimplexContinuation.Simplex(vertices)
+        s = SimplicialContinuation.Simplex(vertices)
 
         # Test invalid facet indices
         @test_throws ArgumentError reflect(s, 0)
@@ -91,26 +91,26 @@ using Test
 
         # Test non-full-dimensional simplex (2D simplex in 3D space)
         vertices_3d = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
-        s_3d = SimplexContinuation.Simplex(vertices_3d)
+        s_3d = SimplicialContinuation.Simplex(vertices_3d)
         @test_throws ArgumentError reflect(s_3d, 1)
 
         # Test degenerate simplex (all vertices the same)
         # Note: This may or may not throw an exception depending on the linear algebra implementation
         degenerate_vertices = [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]]
-        s_degenerate = SimplexContinuation.Simplex(degenerate_vertices)
+        s_degenerate = SimplicialContinuation.Simplex(degenerate_vertices)
         # We don't test for exception here as it's implementation-dependent
     end
 
     @testset "Reflection with Different Types" begin
         # Test with rational numbers
         vertices_rational = [[0 // 1, 0 // 1], [1 // 1, 0 // 1], [0 // 1, 1 // 1]]
-        s_rational = SimplexContinuation.Simplex(vertices_rational)
+        s_rational = SimplicialContinuation.Simplex(vertices_rational)
         reflected_rational = reflect(s_rational, 1)
         @test eltype(reflected_rational) == Rational{Int}
 
         # Test with BigFloat for high precision
         vertices_big = [[BigFloat(0), BigFloat(0)], [BigFloat(1), BigFloat(0)], [BigFloat(0), BigFloat(1)]]
-        s_big = SimplexContinuation.Simplex(vertices_big)
+        s_big = SimplicialContinuation.Simplex(vertices_big)
         reflected_big = reflect(s_big, 1)
         @test eltype(reflected_big) == BigFloat
 
@@ -121,7 +121,7 @@ using Test
     @testset "Geometric Correctness" begin
         # Test more sophisticated geometric properties
         vertices = [[0.0, 0.0], [2.0, 0.0], [1.0, 2.0]]
-        s = SimplexContinuation.Simplex(vertices)
+        s = SimplicialContinuation.Simplex(vertices)
 
         # Test reflection across bottom edge (facet opposite to vertex 3)
         reflected = reflect(s, 3)
@@ -140,7 +140,7 @@ using Test
     @testset "Edge Cases and Boundary Conditions" begin
         # Test 1D reflection (line segment)
         vertices_1d = [[0.0], [1.0]]
-        s_1d = SimplexContinuation.Simplex(vertices_1d)
+        s_1d = SimplicialContinuation.Simplex(vertices_1d)
 
         # Reflect across "facet" 1 (point [1.0])
         reflected_1d_1 = reflect(s_1d, 1)
@@ -154,13 +154,13 @@ using Test
 
         # Test with very small simplex
         tiny_vertices = [[0.0, 0.0], [1.0e-10, 0.0], [0.0, 1.0e-10]]
-        s_tiny = SimplexContinuation.Simplex(tiny_vertices)
+        s_tiny = SimplicialContinuation.Simplex(tiny_vertices)
         reflected_tiny = reflect(s_tiny, 1)
         @test size(reflected_tiny.vertices) == size(s_tiny.vertices)
 
         # Test with large coordinates
         large_vertices = [[0.0, 0.0], [1.0e6, 0.0], [0.0, 1.0e6]]
-        s_large = SimplexContinuation.Simplex(large_vertices)
+        s_large = SimplicialContinuation.Simplex(large_vertices)
         reflected_large = reflect(s_large, 1)
         @test size(reflected_large.vertices) == size(s_large.vertices)
     end
@@ -177,7 +177,7 @@ using Test
                 push!(vertices, vertex)
             end
 
-            s = SimplexContinuation.Simplex(vertices)
+            s = SimplicialContinuation.Simplex(vertices)
 
             # Test reflection across first and last facets
             reflected_first = reflect(s, 1)

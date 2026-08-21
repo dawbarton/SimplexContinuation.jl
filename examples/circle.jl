@@ -1,4 +1,4 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Printf
 
 # Trace the unit circle: f(x) = x₁² + x₂² - 1 = 0

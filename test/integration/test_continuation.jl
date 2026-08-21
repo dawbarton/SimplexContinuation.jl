@@ -1,4 +1,4 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
 @testset "Continuation" begin

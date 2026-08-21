@@ -1,10 +1,10 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
-# Main test runner for SimplexContinuation.jl
+# Main test runner for SimplicialContinuation.jl
 # This file includes all unit tests organized into separate files
 
-@testset "SimplexContinuation.jl" begin
+@testset "SimplicialContinuation.jl" begin
     include("unit/test_simplex_constructors.jl")
     include("unit/test_simplex_properties.jl")
     include("unit/test_geometric_reflection.jl")

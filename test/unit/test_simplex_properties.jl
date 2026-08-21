@@ -1,14 +1,14 @@
-using SimplexContinuation
+using SimplicialContinuation
 using Test
 
 @testset "Simplex Properties and Utility Functions" begin
     @testset "Dimension Functions" begin
         # Test simplex_dimension
-        s2d = SimplexContinuation.Simplex([[0, 0], [1, 0], [0, 1]])
+        s2d = SimplicialContinuation.Simplex([[0, 0], [1, 0], [0, 1]])
         @test simplex_dimension(s2d) == 2
         @test s2d.n == 2
 
-        s3d = SimplexContinuation.Simplex([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        s3d = SimplicialContinuation.Simplex([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
         @test simplex_dimension(s3d) == 3
         @test s3d.n == 3
 
@@ -19,26 +19,26 @@ using Test
         @test s3d.dims == 3
 
         # Test non-square case (simplex in higher dimensional space)
-        s_rect = SimplexContinuation.Simplex{Int}(undef, 2, 3)
+        s_rect = SimplicialContinuation.Simplex{Int}(undef, 2, 3)
         @test simplex_dimension(s_rect) == 2
         @test space_dimension(s_rect) == 3
     end
 
     @testset "Element Type Function" begin
-        s_int = SimplexContinuation.Simplex{Int}([[0, 0], [1, 0], [0, 1]])
+        s_int = SimplicialContinuation.Simplex{Int}([[0, 0], [1, 0], [0, 1]])
         @test eltype(s_int) == Int
 
-        s_float = SimplexContinuation.Simplex{Float64}([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+        s_float = SimplicialContinuation.Simplex{Float64}([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
         @test eltype(s_float) == Float64
 
-        s_rational = SimplexContinuation.Simplex{Rational{Int}}([[0 // 1, 0 // 1], [1 // 1, 0 // 1], [0 // 1, 1 // 1]])
+        s_rational = SimplicialContinuation.Simplex{Rational{Int}}([[0 // 1, 0 // 1], [1 // 1, 0 // 1], [0 // 1, 1 // 1]])
         @test eltype(s_rational) == Rational{Int}
     end
 
     @testset "Sorting Function" begin
         # Test that sort! sorts vertices and returns the simplex
         vertices_unsorted = [[2, 1], [0, 0], [1, 2]]
-        s = SimplexContinuation.Simplex(vertices_unsorted)
+        s = SimplicialContinuation.Simplex(vertices_unsorted)
 
         # Sort and check return value
         result = sort!(s)
@@ -51,7 +51,7 @@ using Test
 
         # Test with different data types
         vertices_float = [[2.5, 1.0], [0.0, 0.0], [1.0, 2.5]]
-        s_float = SimplexContinuation.Simplex(vertices_float)
+        s_float = SimplicialContinuation.Simplex(vertices_float)
         sort!(s_float)
         @test s_float.vertices[:, 1] == [0.0, 0.0]
         @test s_float.vertices[:, 2] == [1.0, 2.5]
@@ -59,7 +59,7 @@ using Test
 
         # Test sorting with negative numbers
         vertices_neg = [[-1, -2], [-3, 0], [1, 1]]
-        s_neg = SimplexContinuation.Simplex(vertices_neg)
+        s_neg = SimplicialContinuation.Simplex(vertices_neg)
         sort!(s_neg)
         @test s_neg.vertices[:, 1] == [-3, 0]
         @test s_neg.vertices[:, 2] == [-1, -2]
@@ -67,7 +67,7 @@ using Test
 
         # Test sorting with duplicate vertices
         vertices_dup = [[1, 1], [0, 0], [1, 1]]
-        s_dup = SimplexContinuation.Simplex(vertices_dup)
+        s_dup = SimplicialContinuation.Simplex(vertices_dup)
         sort!(s_dup)
         @test s_dup.vertices[:, 1] == [0, 0]
         @test s_dup.vertices[:, 2] == [1, 1]
@@ -82,7 +82,7 @@ using Test
             else
                 vertices = [[T(0), T(0)], [T(1), T(0)], [T(0), T(1)]]
             end
-            s = SimplexContinuation.Simplex(vertices)
+            s = SimplicialContinuation.Simplex(vertices)
 
             @test eltype(s) == T
             @test simplex_dimension(s) == 2
@@ -97,7 +97,7 @@ using Test
     @testset "Memory Safety" begin
         # Test that property functions don't mutate inputs
         original_vertices = [[0, 0], [1, 0], [0, 1]]
-        s = SimplexContinuation.Simplex(copy.(original_vertices))
+        s = SimplicialContinuation.Simplex(copy.(original_vertices))
 
         # These functions should not mutate the original simplex
         simplex_dimension(s)
@@ -111,7 +111,7 @@ using Test
         @test s.vertices[:, 3] == original_vertices[3]
 
         # Test that sort! does mutate
-        s_for_sort = SimplexContinuation.Simplex([[2, 1], [0, 0], [1, 2]])
+        s_for_sort = SimplicialContinuation.Simplex([[2, 1], [0, 0], [1, 2]])
         original_order = copy(s_for_sort.vertices)
         sort!(s_for_sort)
         @test s_for_sort.vertices != original_order

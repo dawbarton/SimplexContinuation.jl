@@ -1,6 +1,6 @@
-# Test Organization for SimplexContinuation.jl
+# Test Organization for SimplicialContinuation.jl
 
-This directory contains the comprehensive test suite for the SimplexContinuation.jl package. The tests are organized into separate files for better maintainability and clarity.
+This directory contains the comprehensive test suite for the SimplicialContinuation.jl package. The tests are organized into separate files for better maintainability and clarity.
 
 ## Test Structure
 

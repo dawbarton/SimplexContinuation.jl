@@ -1,4 +1,4 @@
-module SimplexContinuation
+module SimplicialContinuation
 
 using FixedSizeArrays: FixedSizeArray, FixedSizeMatrixDefault, FixedSizeVector, FixedSizeVectorDefault
 using LinearAlgebra: qr, qr!, nullspace, dot
